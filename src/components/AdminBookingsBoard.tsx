@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   MessageCircle,
   Phone,
   RefreshCw,
@@ -17,9 +18,12 @@ import {
   completeBookingAction,
   confirmBookingAction,
 } from '@/src/actions/admin-bookings';
-import type { AdminBookingItem } from '@/src/lib/admin-bookings';
+import type {
+  AdminBookingItem,
+  AdminRevenueSummary,
+} from '@/src/lib/admin-bookings';
 import type { BookingStatus } from '@/src/db/schema';
-import { formatFcfa } from '@/src/lib/pricing';
+import { formatFcfa, formatShortFcfa } from '@/src/lib/pricing';
 
 interface AdminBookingsBoardProps {
   selectedDate: string;
@@ -29,6 +33,7 @@ interface AdminBookingsBoardProps {
   nextDateStr: string;
   lastUpdatedLabel: string;
   bookings: AdminBookingItem[];
+  revenueStats: AdminRevenueSummary;
   loadError?: string | null;
 }
 
@@ -38,11 +43,11 @@ const STATUS_META: Record<
 > = {
   pending: {
     label: "En attente d'acompte",
-    badgeClass: 'bg-[#e8590c]/14 text-[#b84304] border border-[#e8590c]/30',
+    badgeClass: 'bg-[#e8590c]/15 text-[#9e3602] border border-[#e8590c]/35',
   },
   confirmed: {
     label: 'Confirmée',
-    badgeClass: 'bg-[#1f5d3a]/14 text-[#1f5d3a] border border-[#1f5d3a]/30',
+    badgeClass: 'bg-[#1f5d3a]/15 text-[#1f5d3a] border border-[#1f5d3a]/35',
   },
   completed: {
     label: 'Terminée',
@@ -50,7 +55,7 @@ const STATUS_META: Record<
   },
   cancelled: {
     label: 'Annulée',
-    badgeClass: 'bg-[#16231b]/[0.05] text-[#16231b]/60 border border-[#16231b]/12',
+    badgeClass: 'bg-[#16231b]/[0.06] text-[#16231b]/70 border border-[#16231b]/15',
   },
 };
 
@@ -62,6 +67,7 @@ export function AdminBookingsBoard({
   nextDateStr,
   lastUpdatedLabel,
   bookings,
+  revenueStats,
   loadError = null,
 }: AdminBookingsBoardProps) {
   const router = useRouter();
@@ -70,7 +76,6 @@ export function AdminBookingsBoard({
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Automatic refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       router.refresh();
@@ -112,18 +117,57 @@ export function AdminBookingsBoard({
   }
 
   const isToday = selectedDate === todayStr;
-  const pendingCount = bookings.filter((b) => b.status === 'pending').length;
-  const activeConfirmed = bookings.filter(
-    (b) => b.status === 'confirmed' || b.status === 'completed'
-  );
-  const dayTotalFcfa = activeConfirmed.reduce((acc, b) => acc + b.priceFcfa, 0);
 
   return (
     <div className="space-y-5 pb-10">
+      {/* Revenue Dashboard (Jour, Semaine, Mois) from confirmed/completed bookings */}
+      <section aria-label="Revenus confirmés et terminés" className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="font-display text-lg font-bold text-[#16231b]">
+            Revenus (confirmés &amp; terminés)
+          </h2>
+          <span className="text-xs text-[#16231b]/70">En FCFA</span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="bg-white border border-[#16231b]/15 rounded-xl p-2.5 sm:p-3.5 min-w-0">
+            <p className="text-xs font-medium text-[#16231b]/70">
+              {isToday ? "Aujourd'hui" : 'Ce jour'}
+            </p>
+            <p className="font-display text-lg min-[400px]:text-xl sm:text-2xl font-bold text-[#1f5d3a] tabular-nums mt-0.5 truncate">
+              {formatShortFcfa(revenueStats.day.totalFcfa)}
+            </p>
+            <p className="text-[11px] text-[#16231b]/70 mt-0.5 tabular-nums truncate">
+              {revenueStats.day.count} match{revenueStats.day.count > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <div className="bg-white border border-[#16231b]/15 rounded-xl p-2.5 sm:p-3.5 min-w-0">
+            <p className="text-xs font-medium text-[#16231b]/70">Semaine</p>
+            <p className="font-display text-lg min-[400px]:text-xl sm:text-2xl font-bold text-[#16231b] tabular-nums mt-0.5 truncate">
+              {formatShortFcfa(revenueStats.week.totalFcfa)}
+            </p>
+            <p className="text-[11px] text-[#16231b]/70 mt-0.5 tabular-nums truncate">
+              {revenueStats.week.count} match{revenueStats.week.count > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <div className="bg-white border border-[#16231b]/15 rounded-xl p-2.5 sm:p-3.5 min-w-0">
+            <p className="text-xs font-medium text-[#16231b]/70">Mois</p>
+            <p className="font-display text-lg min-[400px]:text-xl sm:text-2xl font-bold text-[#16231b] tabular-nums mt-0.5 truncate">
+              {formatShortFcfa(revenueStats.month.totalFcfa)}
+            </p>
+            <p className="text-[11px] text-[#16231b]/70 mt-0.5 tabular-nums truncate">
+              {revenueStats.month.count} match{revenueStats.month.count > 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Date header & navigation */}
-      <section className="bg-white border border-[#16231b]/12 rounded-2xl p-4">
+      <section className="bg-white border border-[#16231b]/15 rounded-2xl p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#1f5d3a]">
               {isToday ? "Aujourd'hui" : 'Planning du jour'}
             </p>
@@ -136,7 +180,7 @@ export function AdminBookingsBoard({
             type="button"
             onClick={handleManualRefresh}
             disabled={isRefreshing}
-            className="min-h-[44px] px-3.5 py-2 rounded-xl border border-[#16231b]/18 text-sm font-semibold text-[#16231b] hover:bg-[#16231b]/5 inline-flex items-center gap-2 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl border border-[#16231b]/20 text-sm font-semibold text-[#16231b] hover:bg-[#16231b]/5 inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
           >
             <RefreshCw
               className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -146,14 +190,14 @@ export function AdminBookingsBoard({
           </button>
         </div>
 
-        <p className="mt-1 text-xs text-[#16231b]/60 tabular-nums">
+        <p className="mt-1 text-xs text-[#16231b]/70 tabular-nums">
           Mise à jour auto toutes les 30 s · Dernière lecture : {lastUpdatedLabel}
         </p>
 
         <div className="mt-3.5 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <Link
             href={`/admin?date=${prevDateStr}`}
-            className="min-h-[48px] px-3.5 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/15 hover:border-[#1f5d3a] text-sm font-semibold text-[#16231b] inline-flex items-center justify-center gap-1.5"
+            className="min-h-[48px] px-3.5 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/18 hover:border-[#1f5d3a] text-sm font-semibold text-[#16231b] inline-flex items-center justify-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
           >
             <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Jour préc.</span>
@@ -161,7 +205,7 @@ export function AdminBookingsBoard({
 
           <Link
             href={`/admin?date=${nextDateStr}`}
-            className="min-h-[48px] px-3.5 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/15 hover:border-[#1f5d3a] text-sm font-semibold text-[#16231b] inline-flex items-center justify-center gap-1.5"
+            className="min-h-[48px] px-3.5 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/18 hover:border-[#1f5d3a] text-sm font-semibold text-[#16231b] inline-flex items-center justify-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
           >
             <span>Jour suiv.</span>
             <ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -170,7 +214,7 @@ export function AdminBookingsBoard({
           {!isToday && (
             <Link
               href="/admin"
-              className="col-span-2 sm:col-span-1 min-h-[48px] px-4 py-2 rounded-xl bg-[#1f5d3a] text-white text-sm font-semibold inline-flex items-center justify-center"
+              className="col-span-2 sm:col-span-1 min-h-[48px] px-4 py-2 rounded-xl bg-[#1f5d3a] text-white text-sm font-semibold inline-flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
             >
               Revenir à aujourd&apos;hui
             </Link>
@@ -178,36 +222,11 @@ export function AdminBookingsBoard({
         </div>
       </section>
 
-      {/* Compact day summary */}
-      <section
-        aria-label="Résumé du jour"
-        className="grid grid-cols-3 gap-2 sm:gap-3"
-      >
-        <div className="bg-white border border-[#16231b]/12 rounded-xl p-3">
-          <p className="text-xs text-[#16231b]/65">En attente</p>
-          <p className="font-display text-2xl font-bold text-[#e8590c] tabular-nums mt-0.5">
-            {pendingCount}
-          </p>
-        </div>
-        <div className="bg-white border border-[#16231b]/12 rounded-xl p-3">
-          <p className="text-xs text-[#16231b]/65">Confirmées</p>
-          <p className="font-display text-2xl font-bold text-[#1f5d3a] tabular-nums mt-0.5">
-            {activeConfirmed.length}
-          </p>
-        </div>
-        <div className="bg-white border border-[#16231b]/12 rounded-xl p-3">
-          <p className="text-xs text-[#16231b]/65">Total validé</p>
-          <p className="font-display text-xl sm:text-2xl font-bold text-[#16231b] tabular-nums mt-0.5 truncate">
-            {formatFcfa(dayTotalFcfa)}
-          </p>
-        </div>
-      </section>
-
       {/* Errors */}
       {(loadError || actionError) && (
         <div
           role="alert"
-          className="p-4 rounded-xl bg-white border border-[#e8590c] text-sm font-semibold text-[#c93800]"
+          className="p-4 rounded-xl bg-white border border-[#e8590c] text-sm font-semibold text-[#9e3602]"
         >
           {loadError || actionError}
         </div>
@@ -216,11 +235,11 @@ export function AdminBookingsBoard({
       {/* Chronological bookings list */}
       <section aria-label="Réservations du jour" className="space-y-3">
         {!loadError && bookings.length === 0 ? (
-          <div className="bg-white border border-[#16231b]/12 rounded-2xl p-6 text-center">
+          <div className="bg-white border border-[#16231b]/15 rounded-2xl p-6 text-center">
             <p className="font-display text-xl font-bold text-[#16231b]">
               Aucune réservation ce jour
             </p>
-            <p className="mt-1 text-sm text-[#16231b]/65">
+            <p className="mt-1 text-sm text-[#16231b]/70">
               Les réservations en ligne apparaîtront ici automatiquement.
             </p>
           </div>
@@ -236,7 +255,7 @@ export function AdminBookingsBoard({
                 key={booking.id}
                 className={`bg-white border rounded-2xl p-4 transition-opacity ${
                   isCancelled
-                    ? 'border-[#16231b]/10 opacity-75'
+                    ? 'border-[#16231b]/12 opacity-80'
                     : 'border-[#16231b]/15'
                 }`}
               >
@@ -245,7 +264,7 @@ export function AdminBookingsBoard({
                   <span
                     className={`font-display text-2xl font-bold tabular-nums leading-none ${
                       isCancelled
-                        ? 'line-through text-[#16231b]/55'
+                        ? 'line-through text-[#16231b]/65'
                         : 'text-[#16231b]'
                     }`}
                   >
@@ -260,18 +279,28 @@ export function AdminBookingsBoard({
                 </div>
 
                 {/* Team & metadata */}
-                <div className="mt-2.5">
-                  <h3 className="font-display text-xl font-bold text-[#16231b] leading-snug">
-                    {booking.teamName}
-                  </h3>
-                  <p className="text-xs text-[#16231b]/65 mt-0.5 tabular-nums">
-                    Réf. {booking.reference} ·{' '}
-                    {booking.source === 'online' ? 'En ligne' : 'Saisie manuelle'}
-                  </p>
+                <div className="mt-2.5 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-display text-xl font-bold text-[#16231b] leading-snug truncate">
+                      {booking.teamName}
+                    </h3>
+                    <p className="text-xs text-[#16231b]/70 mt-0.5 tabular-nums">
+                      Réf. {booking.reference} ·{' '}
+                      {booking.source === 'online' ? 'En ligne' : 'Saisie manuelle'}
+                    </p>
+                  </div>
+
+                  <Link
+                    href={`/reservation/${booking.id}`}
+                    className="min-h-[44px] px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1f5d3a] hover:bg-[#1f5d3a]/8 inline-flex items-center gap-1 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
+                  >
+                    <span>Fiche</span>
+                    <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                  </Link>
                 </div>
 
                 {/* Amounts */}
-                <div className="mt-3 py-2.5 border-y border-[#16231b]/10 flex flex-wrap items-center justify-between gap-2 text-sm tabular-nums">
+                <div className="mt-2.5 py-2.5 border-y border-[#16231b]/10 flex flex-wrap items-center justify-between gap-2 text-sm tabular-nums">
                   <span>
                     Montant :{' '}
                     <strong className="text-[#16231b]">
@@ -290,7 +319,7 @@ export function AdminBookingsBoard({
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <a
                     href={`tel:${booking.phone}`}
-                    className="min-h-[46px] px-3 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/15 hover:border-[#1f5d3a] text-sm font-semibold text-[#16231b] inline-flex items-center justify-center gap-1.5 tabular-nums"
+                    className="min-h-[46px] px-3 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/18 hover:border-[#1f5d3a] text-sm font-semibold text-[#16231b] inline-flex items-center justify-center gap-1.5 tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
                   >
                     <Phone className="w-4 h-4 text-[#1f5d3a] shrink-0" aria-hidden="true" />
                     <span className="truncate">{booking.phone}</span>
@@ -301,13 +330,13 @@ export function AdminBookingsBoard({
                       href={`https://wa.me/${booking.whatsappDigits}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="min-h-[46px] px-3 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/15 hover:border-[#1f5d3a] text-sm font-semibold text-[#1f5d3a] inline-flex items-center justify-center gap-1.5"
+                      className="min-h-[46px] px-3 py-2 rounded-xl bg-[#f8f7f2] border border-[#16231b]/18 hover:border-[#1f5d3a] text-sm font-semibold text-[#1f5d3a] inline-flex items-center justify-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
                     >
                       <MessageCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                       <span>WhatsApp</span>
                     </a>
                   ) : (
-                    <span className="min-h-[46px] px-3 py-2 rounded-xl bg-[#f8f7f2] text-xs text-[#16231b]/50 inline-flex items-center justify-center">
+                    <span className="min-h-[46px] px-3 py-2 rounded-xl bg-[#f8f7f2] text-xs text-[#16231b]/60 inline-flex items-center justify-center">
                       Pas de WhatsApp
                     </span>
                   )}
@@ -322,7 +351,7 @@ export function AdminBookingsBoard({
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleAction(booking.id, 'confirm')}
-                        className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
                       >
                         <Check className="w-5 h-5 shrink-0" aria-hidden="true" />
                         <span>
@@ -338,7 +367,7 @@ export function AdminBookingsBoard({
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleAction(booking.id, 'complete')}
-                        className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#16231b] hover:bg-[#24382c] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#16231b] hover:bg-[#24382c] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
                       >
                         <Check className="w-5 h-5 shrink-0" aria-hidden="true" />
                         <span>
@@ -352,7 +381,7 @@ export function AdminBookingsBoard({
                         type="button"
                         disabled={isBusy}
                         onClick={() => setConfirmCancelId(booking.id)}
-                        className="w-full min-h-[46px] px-4 py-2 rounded-xl border border-[#e8590c]/45 text-[#b84304] hover:bg-[#e8590c]/10 disabled:opacity-60 text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full min-h-[46px] px-4 py-2 rounded-xl border border-[#e8590c]/50 text-[#9e3602] hover:bg-[#e8590c]/10 disabled:opacity-60 text-sm font-bold flex items-center justify-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
                       >
                         <X className="w-4 h-4 shrink-0" aria-hidden="true" />
                         <span>Annuler cette réservation</span>
@@ -363,15 +392,15 @@ export function AdminBookingsBoard({
                           type="button"
                           disabled={isBusy}
                           onClick={() => handleAction(booking.id, 'cancel')}
-                          className="min-h-[48px] px-3 py-2 rounded-xl bg-[#e8590c] hover:bg-[#cf4c07] disabled:opacity-60 text-white text-sm font-bold cursor-pointer"
+                          className="min-h-[48px] px-3 py-2 rounded-xl bg-[#c94705] hover:bg-[#b23d03] disabled:opacity-60 text-white text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16231b] cursor-pointer"
                         >
-                          {isBusy ? 'Annulation...' : "Oui, annuler"}
+                          {isBusy ? 'Annulation...' : 'Oui, annuler'}
                         </button>
                         <button
                           type="button"
                           disabled={isBusy}
                           onClick={() => setConfirmCancelId(null)}
-                          className="min-h-[48px] px-3 py-2 rounded-xl border border-[#16231b]/20 text-[#16231b] text-sm font-semibold cursor-pointer"
+                          className="min-h-[48px] px-3 py-2 rounded-xl border border-[#16231b]/20 text-[#16231b] text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
                         >
                           Garder
                         </button>

@@ -1,15 +1,17 @@
-import { and, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { getDb, type Database } from '@/src/db';
-import { bookings } from '@/src/db/schema';
+import { bookings, type BookingStatus } from '@/src/db/schema';
 import { getSlotPricing, PENDING_HOLD_MINUTES } from './pricing';
 import {
   buildPortoNovoSlotRange,
   formatDateLongFr,
+  formatPortoNovoSlotRangeFromDates,
   formatSlotRangeLabel,
   formatSlotShortHour,
+  getPortoNovoDateStr,
   isValidDateStr,
 } from './timezone';
-import { createBookingSchema } from './validations';
+import { bookingIdSchema, createBookingSchema } from './validations';
 
 export type SlotState = 'free' | 'taken' | 'past';
 
@@ -295,3 +297,78 @@ export async function createBooking(
     };
   }
 }
+
+export interface BookingDetails {
+  id: string;
+  reference: string;
+  dateStr: string;
+  dateLabel: string;
+  timeLabel: string;
+  startsAtIso: string;
+  endsAtIso: string;
+  teamName: string;
+  phone: string;
+  status: BookingStatus;
+  priceFcfa: number;
+  depositFcfa: number;
+  remainingFcfa: number;
+  expiresAtIso: string | null;
+}
+
+export async function getBookingById(
+  rawId: string,
+  dbOverride?: Database,
+  nowOverride?: Date
+): Promise<BookingDetails | null> {
+  const parsed = bookingIdSchema.safeParse(rawId);
+  if (!parsed.success) {
+    return null;
+  }
+
+  const db = dbOverride ?? getDb();
+  const now = nowOverride ?? new Date();
+
+  await expirePendingBookings(db, now);
+
+  const [row] = await db
+    .select({
+      id: bookings.id,
+      startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      teamName: bookings.teamName,
+      phone: bookings.phone,
+      status: bookings.status,
+      priceFcfa: bookings.priceFcfa,
+      depositFcfa: bookings.depositFcfa,
+      expiresAt: bookings.expiresAt,
+    })
+    .from(bookings)
+    .where(eq(bookings.id, parsed.data))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  const startsAt = new Date(row.startsAt);
+  const endsAt = new Date(row.endsAt);
+  const dateStr = getPortoNovoDateStr(startsAt);
+
+  return {
+    id: row.id,
+    reference: buildBookingReference(row.id),
+    dateStr,
+    dateLabel: formatDateLongFr(dateStr),
+    timeLabel: formatPortoNovoSlotRangeFromDates(startsAt, endsAt),
+    startsAtIso: startsAt.toISOString(),
+    endsAtIso: endsAt.toISOString(),
+    teamName: row.teamName,
+    phone: row.phone,
+    status: row.status,
+    priceFcfa: row.priceFcfa,
+    depositFcfa: row.depositFcfa,
+    remainingFcfa: Math.max(0, row.priceFcfa - row.depositFcfa),
+    expiresAtIso: row.expiresAt ? new Date(row.expiresAt).toISOString() : null,
+  };
+}
+

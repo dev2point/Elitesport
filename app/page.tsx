@@ -1,7 +1,8 @@
+import { BookingExperience } from '@/src/components/BookingExperience';
+import { PWAInstallButton } from '@/src/components/PWAInstallButton';
 import { isDatabaseConfigured } from '@/src/db';
 import { extractDbErrorDetails, getDaySlots, type DaySlot } from '@/src/lib/bookings';
 import { getPortoNovoDateStr, getUpcoming7Days, isValidDateStr } from '@/src/lib/timezone';
-import { BookingExperience } from '@/src/components/BookingExperience';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,17 +51,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <div className="h-1 w-full bg-[#e8590c]" aria-hidden="true" />
 
       <header className="bg-[#1f5d3a] text-[#f8f7f2] border-b border-[#16231b]/15">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight leading-none">
-            Élite Sport Godomey
-          </h1>
-          <p className="mt-1.5 text-sm text-[#f8f7f2]/85">
-            Godomey, Cotonou · Terrain synthétique · Ouvert 24h/24
-          </p>
+        <div className="max-w-5xl mx-auto px-3.5 sm:px-4 py-3.5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl min-[380px]:text-3xl sm:text-4xl font-bold tracking-tight leading-none truncate">
+              Élite Sport Godomey
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/90 truncate">
+              Godomey, Cotonou · Terrain synthétique · 24h/24
+            </p>
+          </div>
+          <PWAInstallButton />
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4">
+      <main className="max-w-5xl mx-auto px-3.5 sm:px-4">
         <BookingExperience
           days={days}
           initialDate={initialDate}

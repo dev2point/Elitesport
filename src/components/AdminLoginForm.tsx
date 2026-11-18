@@ -60,7 +60,7 @@ export function AdminLoginForm({ initialError = null }: AdminLoginFormProps) {
           placeholder="gerant@elitesportgodomey.bj"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full min-h-[48px] px-3.5 rounded-xl bg-[#f8f7f2] border border-[#16231b]/20 text-base text-[#16231b] placeholder:text-[#16231b]/40 focus:outline-none focus:border-[#1f5d3a] focus:ring-2 focus:ring-[#1f5d3a]/20"
+          className="w-full min-h-[48px] px-3.5 rounded-xl bg-[#f8f7f2] border border-[#16231b]/25 text-base text-[#16231b] placeholder:text-[#16231b]/45 focus:outline-none focus:border-[#1f5d3a] focus-visible:ring-2 focus-visible:ring-[#e8590c]"
         />
       </div>
 
@@ -80,14 +80,14 @@ export function AdminLoginForm({ initialError = null }: AdminLoginFormProps) {
           placeholder="••••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full min-h-[48px] px-3.5 rounded-xl bg-[#f8f7f2] border border-[#16231b]/20 text-base text-[#16231b] placeholder:text-[#16231b]/40 focus:outline-none focus:border-[#1f5d3a] focus:ring-2 focus:ring-[#1f5d3a]/20"
+          className="w-full min-h-[48px] px-3.5 rounded-xl bg-[#f8f7f2] border border-[#16231b]/25 text-base text-[#16231b] placeholder:text-[#16231b]/45 focus:outline-none focus:border-[#1f5d3a] focus-visible:ring-2 focus-visible:ring-[#e8590c]"
         />
       </div>
 
       {error && (
         <p
           role="alert"
-          className="text-sm font-semibold text-[#c93800] bg-[#e8590c]/10 border border-[#e8590c]/30 rounded-xl px-3.5 py-2.5"
+          className="text-sm font-semibold text-[#9e3602] bg-[#e8590c]/12 border border-[#e8590c]/35 rounded-xl px-3.5 py-2.5"
         >
           {error}
         </p>
@@ -96,7 +96,7 @@ export function AdminLoginForm({ initialError = null }: AdminLoginFormProps) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] active:scale-[0.99] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 transition-colors cursor-pointer"
+        className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] active:scale-[0.99] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors cursor-pointer"
       >
         <Lock className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span>{isSubmitting ? 'Connexion...' : 'Se connecter'}</span>

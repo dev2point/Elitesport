@@ -2,11 +2,14 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { AdminBookingsBoard } from '@/src/components/AdminBookingsBoard';
 import { AdminLogoutButton } from '@/src/components/AdminLogoutButton';
+import { PWAInstallButton } from '@/src/components/PWAInstallButton';
 import { isDatabaseConfigured } from '@/src/db';
 import { requireAdminSession } from '@/src/lib/admin-auth';
 import {
   getAdminDayBookings,
+  getAdminRevenueStats,
   type AdminBookingItem,
+  type AdminRevenueSummary,
 } from '@/src/lib/admin-bookings';
 import { extractDbErrorDetails } from '@/src/lib/bookings';
 import {
@@ -22,6 +25,12 @@ export const dynamic = 'force-dynamic';
 interface AdminHomePageProps {
   searchParams: Promise<{ date?: string }>;
 }
+
+const EMPTY_REVENUE: AdminRevenueSummary = {
+  day: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+  week: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+  month: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+};
 
 export default async function AdminHomePage({ searchParams }: AdminHomePageProps) {
   const { user } = await requireAdminSession();
@@ -41,6 +50,7 @@ export default async function AdminHomePage({ searchParams }: AdminHomePageProps
   const lastUpdatedLabel = formatPortoNovoTimeHHMM(now);
 
   let bookings: AdminBookingItem[] = [];
+  let revenueStats: AdminRevenueSummary = EMPTY_REVENUE;
   let loadError: string | null = null;
 
   if (!isDatabaseConfigured()) {
@@ -48,6 +58,7 @@ export default async function AdminHomePage({ searchParams }: AdminHomePageProps
   } else {
     try {
       bookings = await getAdminDayBookings(selectedDate, undefined, now);
+      revenueStats = await getAdminRevenueStats(selectedDate);
     } catch (error) {
       const details = extractDbErrorDetails(error);
       console.error(
@@ -67,22 +78,23 @@ export default async function AdminHomePage({ searchParams }: AdminHomePageProps
       <div className="h-1 w-full bg-[#e8590c]" aria-hidden="true" />
 
       <header className="bg-[#1f5d3a] text-[#f8f7f2] border-b border-[#16231b]/15">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+        <div className="max-w-5xl mx-auto px-3.5 sm:px-4 py-3.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight leading-none truncate">
               Élite Sport Godomey
             </h1>
-            <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/85 truncate">
+            <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/90 truncate">
               Gérant · {user.name}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <PWAInstallButton />
             <Link
               href="/"
-              className="min-h-[44px] px-3 py-2 rounded-xl text-sm font-medium text-[#f8f7f2] hover:bg-white/10 inline-flex items-center gap-1.5 whitespace-nowrap"
+              className="min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl text-sm font-medium text-[#f8f7f2] hover:bg-white/10 inline-flex items-center gap-1.5 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f8f7f2]"
             >
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+              <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Page publique</span>
             </Link>
             <AdminLogoutButton />
@@ -90,7 +102,7 @@ export default async function AdminHomePage({ searchParams }: AdminHomePageProps
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 pt-5">
+      <main className="max-w-5xl mx-auto px-3.5 sm:px-4 pt-5">
         <AdminBookingsBoard
           selectedDate={selectedDate}
           todayStr={todayStr}
@@ -99,6 +111,7 @@ export default async function AdminHomePage({ searchParams }: AdminHomePageProps
           nextDateStr={nextDateStr}
           lastUpdatedLabel={lastUpdatedLabel}
           bookings={bookings}
+          revenueStats={revenueStats}
           loadError={loadError}
         />
       </main>

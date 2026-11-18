@@ -1,9 +1,18 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { CheckCircle2, Clock, MessageCircle, X } from 'lucide-react';
+import Link from 'next/link';
+import {
+  CalendarPlus,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  MessageCircle,
+  X,
+} from 'lucide-react';
 import { fetchDaySlotsAction, reserveSlotAction } from '@/src/actions/bookings';
 import type { CreatedBookingSummary, DaySlot } from '@/src/lib/bookings';
+import { buildBookingIcsDataUri } from '@/src/lib/calendar';
 import { formatFcfa, formatShortFcfa } from '@/src/lib/pricing';
 import type { DayOption } from '@/src/lib/timezone';
 
@@ -161,15 +170,38 @@ export function BookingExperience({
     ? buildWhatsappHref(managerWhatsapp, confirmedBooking)
     : null;
 
+  const icsHref = confirmedBooking
+    ? buildBookingIcsDataUri({
+        id: confirmedBooking.id,
+        reference: confirmedBooking.reference,
+        teamName: confirmedBooking.teamName,
+        startsAtIso: new Date(
+          `${confirmedBooking.date}T${confirmedBooking.hour
+            .toString()
+            .padStart(2, '0')}:00:00+01:00`
+        ).toISOString(),
+        endsAtIso: new Date(
+          new Date(
+            `${confirmedBooking.date}T${confirmedBooking.hour
+              .toString()
+              .padStart(2, '0')}:00:00+01:00`
+          ).getTime() +
+            60 * 60 * 1000
+        ).toISOString(),
+        priceFcfa: confirmedBooking.priceFcfa,
+        depositFcfa: confirmedBooking.depositFcfa,
+      })
+    : null;
+
   return (
-    <div className={selectedSlot || confirmedBooking ? 'pb-72' : 'pb-12'}>
+    <div className={selectedSlot || confirmedBooking ? 'pb-80' : 'pb-12'}>
       {/* 7-day horizontal scroller */}
       <section aria-label="Choix du jour" className="mt-4">
-        <div className="flex items-baseline justify-between mb-2.5">
+        <div className="flex items-baseline justify-between gap-2 mb-2.5">
           <h2 className="font-display text-lg font-bold tracking-wide text-[#16231b]">
             Choisir un jour
           </h2>
-          <span className="text-xs font-medium text-[#16231b]/70 tabular-nums">
+          <span className="text-xs font-medium text-[#16231b]/75 tabular-nums truncate">
             {activeDay?.fullLabel}
           </span>
         </div>
@@ -183,15 +215,15 @@ export function BookingExperience({
                 type="button"
                 onClick={() => handleSelectDate(day.dateStr)}
                 aria-pressed={isActive}
-                className={`snap-start shrink-0 min-w-[68px] min-h-[64px] px-3 py-2 rounded-xl flex flex-col items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] ${
+                className={`snap-start shrink-0 min-w-[68px] min-h-[64px] px-3 py-2 rounded-xl flex flex-col items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer ${
                   isActive
                     ? 'bg-[#1f5d3a] text-[#f8f7f2] border border-[#1f5d3a] shadow-sm'
-                    : 'bg-white text-[#16231b] border border-[#16231b]/15 hover:border-[#1f5d3a]/50'
+                    : 'bg-white text-[#16231b] border border-[#16231b]/18 hover:border-[#1f5d3a]'
                 }`}
               >
                 <span
                   className={`text-[11px] font-semibold uppercase tracking-wide ${
-                    isActive ? 'text-[#f8f7f2]/85' : 'text-[#16231b]/65'
+                    isActive ? 'text-[#f8f7f2]/90' : 'text-[#16231b]/70'
                   }`}
                 >
                   {day.weekdayShort}
@@ -201,7 +233,7 @@ export function BookingExperience({
                 </span>
                 <span
                   className={`text-[11px] mt-0.5 ${
-                    isActive ? 'text-[#f8f7f2]/85' : 'text-[#16231b]/60'
+                    isActive ? 'text-[#f8f7f2]/90' : 'text-[#16231b]/70'
                   }`}
                 >
                   {day.monthShort}
@@ -219,7 +251,7 @@ export function BookingExperience({
       </section>
 
       {/* Tariff info strip (unboxed text, zero-pill rule) */}
-      <section className="mt-5 py-3 border-y border-[#16231b]/12 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm text-[#16231b]/80">
+      <section className="mt-4 py-3 border-y border-[#16231b]/12 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs sm:text-sm text-[#16231b]/85">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
           <span className="font-semibold text-[#16231b]">Tarifs :</span>
           <span>06h–17h · 5 000 FCFA</span>
@@ -228,7 +260,7 @@ export function BookingExperience({
           <span aria-hidden="true">·</span>
           <span>Acompte 30 %</span>
         </div>
-        <span className="font-semibold text-[#1f5d3a] tabular-nums">
+        <span className="font-bold text-[#1f5d3a] tabular-nums">
           {isLoadingDay
             ? 'Mise à jour...'
             : `${freeCount} créneau${freeCount > 1 ? 'x' : ''} libre${
@@ -243,12 +275,12 @@ export function BookingExperience({
           role="alert"
           className="mt-4 p-4 rounded-xl bg-white border border-[#e8590c] text-[#16231b] text-sm"
         >
-          <p className="font-semibold text-[#e8590c]">Connexion indisponible</p>
-          <p className="mt-1 text-[#16231b]/80">{loadError}</p>
+          <p className="font-bold text-[#b84304]">Connexion indisponible</p>
+          <p className="mt-1 text-[#16231b]/85">{loadError}</p>
           <button
             type="button"
             onClick={() => handleSelectDate(selectedDate)}
-            className="mt-3 min-h-[44px] px-4 py-2 rounded-lg bg-[#1f5d3a] text-white text-sm font-semibold"
+            className="mt-3 min-h-[44px] px-4 py-2 rounded-lg bg-[#1f5d3a] text-white text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
           >
             Réessayer
           </button>
@@ -266,7 +298,6 @@ export function BookingExperience({
             {slots.map((slot) => {
               const isFree = slot.state === 'free';
               const isTaken = slot.state === 'taken';
-              const isPast = slot.state === 'past';
               const isSelected =
                 selectedSlot?.date === slot.date &&
                 selectedSlot?.hour === slot.hour;
@@ -285,19 +316,19 @@ export function BookingExperience({
                         ? 'Déjà pris'
                         : 'Créneau passé'
                   }`}
-                  className={`min-h-[78px] p-2.5 rounded-xl flex flex-col justify-between text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] ${
+                  className={`min-h-[78px] min-w-0 p-2.5 rounded-xl flex flex-col justify-between text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] ${
                     isSelected
-                      ? 'bg-[#1f5d3a] text-[#f8f7f2] border-2 border-[#e8590c] shadow-sm'
+                      ? 'bg-[#1f5d3a] text-[#f8f7f2] border-2 border-[#e8590c] shadow-sm cursor-pointer'
                       : isFree
-                        ? 'bg-white text-[#16231b] border border-[#1f5d3a]/25 hover:border-[#1f5d3a] active:scale-[0.98]'
+                        ? 'bg-white text-[#16231b] border border-[#1f5d3a]/30 hover:border-[#1f5d3a] active:scale-[0.98] cursor-pointer'
                         : isTaken
-                          ? 'bg-[#16231b]/[0.06] text-[#16231b]/50 border border-[#16231b]/10 cursor-not-allowed'
-                          : 'bg-[#16231b]/[0.03] text-[#16231b]/35 border border-transparent cursor-not-allowed'
+                          ? 'bg-[#16231b]/[0.07] text-[#16231b]/65 border border-[#16231b]/12 cursor-not-allowed'
+                          : 'bg-[#16231b]/[0.04] text-[#16231b]/55 border border-transparent cursor-not-allowed'
                   }`}
                 >
-                  <div className="w-full flex items-center justify-between gap-1">
+                  <div className="w-full min-w-0 flex items-center justify-between gap-1">
                     <span
-                      className={`font-display text-lg font-bold leading-none tabular-nums ${
+                      className={`font-display text-base min-[380px]:text-lg font-bold leading-none tabular-nums whitespace-nowrap ${
                         isTaken ? 'line-through decoration-2' : ''
                       }`}
                     >
@@ -312,7 +343,7 @@ export function BookingExperience({
                           ? 'text-[#f8f7f2]'
                           : isFree
                             ? 'text-[#1f5d3a]'
-                            : 'text-[#16231b]/45'
+                            : 'text-[#16231b]/60'
                       }`}
                     >
                       {formatShortFcfa(slot.priceFcfa)}
@@ -320,12 +351,12 @@ export function BookingExperience({
                     <span
                       className={`text-[11px] font-medium leading-tight ${
                         isSelected
-                          ? 'text-[#f8f7f2]/90'
+                          ? 'text-[#f8f7f2]/95'
                           : isFree
-                            ? 'text-[#16231b]/65'
+                            ? 'text-[#16231b]/75'
                             : isTaken
-                              ? 'text-[#16231b]/60 font-semibold'
-                              : 'text-[#16231b]/40'
+                              ? 'text-[#16231b]/70 font-semibold'
+                              : 'text-[#16231b]/55'
                       }`}
                     >
                       {isSelected
@@ -348,16 +379,17 @@ export function BookingExperience({
       {selectedSlot && !confirmedBooking && (
         <div
           role="dialog"
+          aria-modal="false"
           aria-label="Finaliser la réservation"
           className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-[#e8590c] shadow-[0_-10px_28px_rgba(22,35,27,0.16)]"
         >
-          <div className="max-w-xl mx-auto px-4 pt-3 pb-4">
+          <div className="max-w-xl mx-auto px-3.5 sm:px-4 pt-3 pb-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="font-display text-xl font-bold text-[#16231b] leading-tight tabular-nums">
                   {activeDay?.fullLabel} · {selectedSlot.label}
                 </p>
-                <p className="text-xs sm:text-sm font-medium text-[#16231b]/75 mt-0.5 tabular-nums">
+                <p className="text-xs sm:text-sm font-medium text-[#16231b]/80 mt-0.5 tabular-nums">
                   Total : {formatFcfa(selectedSlot.priceFcfa)} · Acompte 30 % :{' '}
                   <span className="font-bold text-[#1f5d3a]">
                     {formatFcfa(selectedSlot.depositFcfa)}
@@ -371,7 +403,7 @@ export function BookingExperience({
                   setFormError(null);
                 }}
                 aria-label="Fermer le formulaire"
-                className="min-h-[44px] min-w-[44px] -mt-1 -mr-2 flex items-center justify-center rounded-lg text-[#16231b]/70 hover:text-[#16231b] hover:bg-[#16231b]/5"
+                className="min-h-[44px] min-w-[44px] -mt-1 -mr-2 flex items-center justify-center rounded-lg text-[#16231b]/75 hover:text-[#16231b] hover:bg-[#16231b]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] cursor-pointer"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
@@ -397,7 +429,7 @@ export function BookingExperience({
                     placeholder="Ex : FC Godomey"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    className="w-full min-h-[48px] px-3 rounded-xl bg-[#f8f7f2] border border-[#16231b]/20 text-base text-[#16231b] placeholder:text-[#16231b]/40 focus:outline-none focus:border-[#1f5d3a] focus:ring-2 focus:ring-[#1f5d3a]/20"
+                    className="w-full min-h-[48px] px-3 rounded-xl bg-[#f8f7f2] border border-[#16231b]/25 text-base text-[#16231b] placeholder:text-[#16231b]/45 focus:outline-none focus:border-[#1f5d3a] focus-visible:ring-2 focus-visible:ring-[#e8590c]"
                   />
                 </div>
 
@@ -418,7 +450,7 @@ export function BookingExperience({
                     placeholder="Ex : 0197000000"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full min-h-[48px] px-3 rounded-xl bg-[#f8f7f2] border border-[#16231b]/20 text-base text-[#16231b] placeholder:text-[#16231b]/40 tabular-nums focus:outline-none focus:border-[#1f5d3a] focus:ring-2 focus:ring-[#1f5d3a]/20"
+                    className="w-full min-h-[48px] px-3 rounded-xl bg-[#f8f7f2] border border-[#16231b]/25 text-base text-[#16231b] placeholder:text-[#16231b]/45 tabular-nums focus:outline-none focus:border-[#1f5d3a] focus-visible:ring-2 focus-visible:ring-[#e8590c]"
                   />
                 </div>
               </div>
@@ -426,7 +458,7 @@ export function BookingExperience({
               {formError && (
                 <p
                   role="alert"
-                  className="text-sm font-semibold text-[#c93800] bg-[#e8590c]/10 border border-[#e8590c]/30 rounded-lg px-3 py-2"
+                  className="text-sm font-semibold text-[#9e3602] bg-[#e8590c]/12 border border-[#e8590c]/35 rounded-lg px-3 py-2"
                 >
                   {formError}
                 </p>
@@ -435,7 +467,7 @@ export function BookingExperience({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#e8590c] hover:bg-[#cf4c07] active:scale-[0.99] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide transition-colors cursor-pointer"
+                className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#c94705] hover:bg-[#b23d03] active:scale-[0.99] disabled:opacity-60 text-white font-display text-lg font-bold tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16231b] cursor-pointer"
               >
                 {isSubmitting
                   ? 'Blocage en cours...'
@@ -453,16 +485,16 @@ export function BookingExperience({
           aria-live="polite"
           className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-[#1f5d3a] shadow-[0_-10px_28px_rgba(22,35,27,0.18)]"
         >
-          <div className="max-w-xl mx-auto px-4 pt-3.5 pb-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2 text-[#1f5d3a]">
+          <div className="max-w-xl mx-auto px-3.5 sm:px-4 pt-3.5 pb-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 text-[#1f5d3a] min-w-0">
                 <CheckCircle2 className="w-6 h-6 shrink-0" aria-hidden="true" />
-                <h3 className="font-display text-2xl font-bold leading-none text-[#16231b]">
+                <h3 className="font-display text-xl sm:text-2xl font-bold leading-none text-[#16231b] truncate">
                   Créneau bloqué 15 minutes
                 </h3>
               </div>
 
-              <div className="flex items-center gap-1.5 text-sm font-bold text-[#e8590c] tabular-nums shrink-0">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-[#b84304] tabular-nums shrink-0">
                 <Clock className="w-4 h-4" aria-hidden="true" />
                 <span>
                   {formatCountdown(confirmedBooking.expiresAtIso, nowMs)}
@@ -471,32 +503,32 @@ export function BookingExperience({
             </div>
 
             <div className="mt-3 py-2.5 border-y border-[#16231b]/10 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
-              <div>
-                <span className="text-[#16231b]/60">Équipe : </span>
+              <div className="truncate">
+                <span className="text-[#16231b]/65">Équipe : </span>
                 <span className="font-semibold text-[#16231b]">
                   {confirmedBooking.teamName}
                 </span>
               </div>
-              <div className="tabular-nums">
-                <span className="text-[#16231b]/60">Réf. : </span>
+              <div className="tabular-nums text-right sm:text-left">
+                <span className="text-[#16231b]/65">Réf. : </span>
                 <span className="font-bold text-[#16231b]">
                   {confirmedBooking.reference}
                 </span>
               </div>
               <div className="col-span-2 tabular-nums">
-                <span className="text-[#16231b]/60">Créneau : </span>
+                <span className="text-[#16231b]/65">Créneau : </span>
                 <span className="font-semibold text-[#16231b]">
                   {confirmedBooking.dateLabel} · {confirmedBooking.timeLabel}
                 </span>
               </div>
               <div className="tabular-nums">
-                <span className="text-[#16231b]/60">Tarif : </span>
+                <span className="text-[#16231b]/65">Tarif : </span>
                 <span className="font-semibold text-[#16231b]">
                   {formatFcfa(confirmedBooking.priceFcfa)}
                 </span>
               </div>
-              <div className="tabular-nums">
-                <span className="text-[#16231b]/60">Acompte 30 % : </span>
+              <div className="tabular-nums text-right sm:text-left">
+                <span className="text-[#16231b]/65">Acompte 30 % : </span>
                 <span className="font-bold text-[#1f5d3a]">
                   {formatFcfa(confirmedBooking.depositFcfa)}
                 </span>
@@ -509,23 +541,44 @@ export function BookingExperience({
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 transition-colors"
+                  className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors"
                 >
                   <MessageCircle className="w-5 h-5 shrink-0" aria-hidden="true" />
                   <span>Confirmer sur WhatsApp</span>
                 </a>
               ) : (
-                <p className="text-xs font-medium text-[#e8590c] bg-[#e8590c]/10 rounded-lg px-3 py-2">
+                <p className="text-xs font-semibold text-[#9e3602] bg-[#e8590c]/10 rounded-lg px-3 py-2">
                   Numéro WhatsApp du gérant non configuré
                   (NEXT_PUBLIC_MANAGER_WHATSAPP). Conservez votre référence{' '}
                   {confirmedBooking.reference}.
                 </p>
               )}
 
+              <div className="grid grid-cols-2 gap-2">
+                {icsHref && (
+                  <a
+                    href={icsHref}
+                    download={`reservation-${confirmedBooking.reference}.ics`}
+                    className="min-h-[46px] px-3 py-2 rounded-xl border border-[#16231b]/20 text-xs sm:text-sm font-semibold text-[#16231b] hover:bg-[#16231b]/5 inline-flex items-center justify-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
+                  >
+                    <CalendarPlus className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">Calendrier</span>
+                  </a>
+                )}
+
+                <Link
+                  href={`/reservation/${confirmedBooking.id}`}
+                  className="min-h-[46px] px-3 py-2 rounded-xl border border-[#1f5d3a]/30 text-xs sm:text-sm font-semibold text-[#1f5d3a] hover:bg-[#1f5d3a]/5 inline-flex items-center justify-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c]"
+                >
+                  <ExternalLink className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">Fiche complète</span>
+                </Link>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setConfirmedBooking(null)}
-                className="w-full min-h-[44px] px-4 py-2 rounded-xl border border-[#16231b]/15 text-sm font-semibold text-[#16231b] hover:bg-[#16231b]/5 transition-colors"
+                className="w-full min-h-[44px] px-4 py-2 rounded-xl border border-[#16231b]/15 text-sm font-semibold text-[#16231b] hover:bg-[#16231b]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors cursor-pointer"
               >
                 Fermer et voir les créneaux
               </button>

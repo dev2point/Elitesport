@@ -17,19 +17,19 @@ export default async function AdminLoginPage() {
       <div className="h-1 w-full bg-[#e8590c]" aria-hidden="true" />
 
       <header className="bg-[#1f5d3a] text-[#f8f7f2] border-b border-[#16231b]/15">
-        <div className="max-w-xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight leading-none">
+        <div className="max-w-xl mx-auto px-3.5 sm:px-4 py-3.5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight leading-none truncate">
               Élite Sport Godomey
             </h1>
-            <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/85">
+            <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/90 truncate">
               Espace gérant · Connexion sécurisée
             </p>
           </div>
 
           <Link
             href="/"
-            className="min-h-[44px] px-3 py-2 rounded-lg text-sm font-medium text-[#f8f7f2] hover:bg-white/10 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+            className="min-h-[44px] px-3 py-2 rounded-lg text-sm font-medium text-[#f8f7f2] hover:bg-white/10 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f8f7f2] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             <span>Terrain</span>

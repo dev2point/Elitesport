@@ -9,6 +9,8 @@ import {
 import {
   buildPortoNovoSlotRange,
   formatPortoNovoSlotRangeFromDates,
+  getPortoNovoMonthRange,
+  getPortoNovoWeekRange,
   isValidDateStr,
 } from './timezone';
 import { bookingIdSchema } from './validations';
@@ -31,12 +33,89 @@ export interface AdminBookingItem {
   expiresAtIso: string | null;
 }
 
+export interface RevenuePeriodSummary {
+  totalFcfa: number;
+  depositFcfa: number;
+  count: number;
+}
+
+export interface AdminRevenueSummary {
+  day: RevenuePeriodSummary;
+  week: RevenuePeriodSummary;
+  month: RevenuePeriodSummary;
+}
+
 export type TransitionBookingResult =
   | { ok: true; status: BookingStatus }
   | { ok: false; error: string };
 
 export function extractPhoneDigitsForWhatsapp(phone: string): string {
   return phone.replace(/\D/g, '');
+}
+
+export async function getAdminRevenueStats(
+  referenceDateStr: string,
+  dbOverride?: Database
+): Promise<AdminRevenueSummary> {
+  if (!isValidDateStr(referenceDateStr)) {
+    throw new RangeError(`Invalid date: ${referenceDateStr}`);
+  }
+
+  const db = dbOverride ?? getDb();
+
+  const { startsAt: dayStart } = buildPortoNovoSlotRange(referenceDateStr, 0);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const weekRange = getPortoNovoWeekRange(referenceDateStr);
+  const monthRange = getPortoNovoMonthRange(referenceDateStr);
+
+  const rangeStart = new Date(
+    Math.min(dayStart.getTime(), weekRange.start.getTime(), monthRange.start.getTime())
+  );
+  const rangeEnd = new Date(
+    Math.max(dayEnd.getTime(), weekRange.end.getTime(), monthRange.end.getTime())
+  );
+
+  const rows = await db
+    .select({
+      startsAt: bookings.startsAt,
+      priceFcfa: bookings.priceFcfa,
+      depositFcfa: bookings.depositFcfa,
+    })
+    .from(bookings)
+    .where(
+      and(
+        sql`${bookings.status}::text IN ('confirmed', 'completed')`,
+        sql`${bookings.startsAt} >= ${rangeStart.toISOString()}::timestamptz`,
+        sql`${bookings.startsAt} < ${rangeEnd.toISOString()}::timestamptz`
+      )
+    );
+
+  const summary: AdminRevenueSummary = {
+    day: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+    week: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+    month: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+  };
+
+  for (const row of rows) {
+    const ts = new Date(row.startsAt).getTime();
+    if (ts >= dayStart.getTime() && ts < dayEnd.getTime()) {
+      summary.day.totalFcfa += row.priceFcfa;
+      summary.day.depositFcfa += row.depositFcfa;
+      summary.day.count += 1;
+    }
+    if (ts >= weekRange.start.getTime() && ts < weekRange.end.getTime()) {
+      summary.week.totalFcfa += row.priceFcfa;
+      summary.week.depositFcfa += row.depositFcfa;
+      summary.week.count += 1;
+    }
+    if (ts >= monthRange.start.getTime() && ts < monthRange.end.getTime()) {
+      summary.month.totalFcfa += row.priceFcfa;
+      summary.month.depositFcfa += row.depositFcfa;
+      summary.month.count += 1;
+    }
+  }
+
+  return summary;
 }
 
 export async function getAdminDayBookings(

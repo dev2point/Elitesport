@@ -150,3 +150,40 @@ export function formatPortoNovoTimeHHMM(date: Date = new Date()): string {
   return `${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}`;
 }
 
+export function getPortoNovoWeekRange(dateStr: string): {
+  start: Date;
+  end: Date;
+} {
+  if (!isValidDateStr(dateStr)) {
+    throw new RangeError(`Invalid date string: ${dateStr}`);
+  }
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const utcDay = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun..6=Sat
+  const daysFromMonday = (utcDay + 6) % 7;
+  const mondayStr = addDaysToDateStr(dateStr, -daysFromMonday);
+  const nextMondayStr = addDaysToDateStr(mondayStr, 7);
+  return {
+    start: new Date(`${mondayStr}T00:00:00+01:00`),
+    end: new Date(`${nextMondayStr}T00:00:00+01:00`),
+  };
+}
+
+export function getPortoNovoMonthRange(dateStr: string): {
+  start: Date;
+  end: Date;
+} {
+  if (!isValidDateStr(dateStr)) {
+    throw new RangeError(`Invalid date string: ${dateStr}`);
+  }
+  const [y, m] = dateStr.split('-').map(Number);
+  const startStr = `${y}-${pad2(m)}-01`;
+  const nextMonthYear = m === 12 ? y + 1 : y;
+  const nextMonth = m === 12 ? 1 : m + 1;
+  const endStr = `${nextMonthYear}-${pad2(nextMonth)}-01`;
+  return {
+    start: new Date(`${startStr}T00:00:00+01:00`),
+    end: new Date(`${endStr}T00:00:00+01:00`),
+  };
+}
+
+

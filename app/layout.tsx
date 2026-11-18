@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Barlow, Barlow_Condensed } from 'next/font/google';
+import { OfflineBanner } from '@/src/components/OfflineBanner';
 import './globals.css';
 
 const barlow = Barlow({
@@ -20,6 +21,18 @@ export const metadata: Metadata = {
   title: 'Élite Sport Godomey — Réservation de terrain 24h/24',
   description:
     'Réservez votre créneau d’une heure au terrain de football Élite Sport Godomey à Cotonou, Bénin. Ouvert 24h/24.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Élite Sport',
+  },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title: 'Élite Sport Godomey — Réservation de terrain 24h/24',
     description:
@@ -51,7 +64,8 @@ export default function RootLayout({
       lang="fr"
       className={`${barlow.variable} ${barlowCondensed.variable}`}
     >
-      <body className="min-h-screen bg-[#f8f7f2] text-[#16231b] antialiased">
+      <body className="min-h-screen bg-[#f8f7f2] text-[#16231b] antialiased overflow-x-hidden">
+        <OfflineBanner />
         {children}
       </body>
     </html>
