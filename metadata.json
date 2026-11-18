@@ -1,0 +1,6 @@
+{
+  "name": "Élite Sport Godomey",
+  "description": "Réservation en ligne 24h/24 du terrain de football Élite Sport Godomey à Cotonou, Bénin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

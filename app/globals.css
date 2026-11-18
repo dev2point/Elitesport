@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-barlow), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-barlow-condensed), system-ui, -apple-system, sans-serif;
+  --color-pitch: #1f5d3a;
+  --color-line: #e8590c;
+  --color-canvas: #f8f7f2;
+  --color-ink: #16231b;
+}
+
+@layer base {
+  html {
+    background-color: #f8f7f2;
+    color: #16231b;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: #f8f7f2;
+    color: #16231b;
+    font-family: var(--font-sans);
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
