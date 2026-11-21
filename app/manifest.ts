@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Élite Sport Godomey',
     short_name: 'Élite Sport',
     description:
-      'Réservation 24h/24 du terrain de football Élite Sport Godomey à Cotonou, Bénin.',
+      'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Barlow, Barlow_Condensed } from 'next/font/google';
 import { OfflineBanner } from '@/src/components/OfflineBanner';
 import './globals.css';
@@ -18,9 +19,9 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: 'Élite Sport Godomey — Réservation de terrain 24h/24',
+  title: 'Élite Sport Godomey — Terrain de football 24h/24 à Cotonou',
   description:
-    'Réservez votre créneau d’une heure au terrain de football Élite Sport Godomey à Cotonou, Bénin. Ouvert 24h/24.',
+    'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24, avec blocage de 15 minutes et confirmation par WhatsApp.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -34,9 +35,9 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'Élite Sport Godomey — Réservation de terrain 24h/24',
+    title: 'Élite Sport Godomey — Terrain de football 24h/24 à Cotonou',
     description:
-      'Réservez votre créneau d’une heure au terrain de football Élite Sport Godomey à Cotonou, Bénin.',
+      'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24, avec blocage de 15 minutes et confirmation par WhatsApp.',
     type: 'website',
     locale: 'fr_BJ',
   },
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
     card: 'summary',
     title: 'Élite Sport Godomey',
     description:
-      'Réservation en ligne 24h/24 du terrain de football Élite Sport Godomey à Cotonou.',
+      'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24.',
   },
 };
 
@@ -64,6 +65,23 @@ export default function RootLayout({
       lang="fr"
       className={`${barlow.variable} ${barlowCondensed.variable}`}
     >
+      <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="https://unpkg.com/react-scan/dist/auto.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="https://unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </head>
       <body className="min-h-screen bg-[#f8f7f2] text-[#16231b] antialiased overflow-x-hidden">
         <OfflineBanner />
         {children}
