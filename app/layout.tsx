@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Barlow, Barlow_Condensed } from 'next/font/google';
+import { MotionProvider } from '@/src/components/MotionProvider';
 import { OfflineBanner } from '@/src/components/OfflineBanner';
 import './globals.css';
 
@@ -63,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${barlow.variable} ${barlowCondensed.variable}`}
+      className={`${barlow.variable} ${barlowCondensed.variable} scroll-smooth`}
     >
       <head>
         {process.env.NODE_ENV === "development" && (
@@ -83,8 +84,10 @@ export default function RootLayout({
         )}
       </head>
       <body className="min-h-screen bg-[#f8f7f2] text-[#16231b] antialiased overflow-x-hidden">
-        <OfflineBanner />
-        {children}
+        <MotionProvider>
+          <OfflineBanner />
+          {children}
+        </MotionProvider>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   CalendarPlus,
   CheckCircle2,
@@ -13,7 +14,13 @@ import {
 import { fetchDaySlotsAction, reserveSlotAction } from '@/src/actions/bookings';
 import type { CreatedBookingSummary, DaySlot } from '@/src/lib/bookings';
 import { buildBookingIcsDataUri } from '@/src/lib/calendar';
-import { formatFcfa, formatShortFcfa } from '@/src/lib/pricing';
+import {
+  DAY_RATE_FCFA,
+  DEPOSIT_PERCENTAGE,
+  NIGHT_RATE_FCFA,
+  formatFcfa,
+  formatShortFcfa,
+} from '@/src/lib/pricing';
 import type { DayOption } from '@/src/lib/timezone';
 
 interface BookingExperienceProps {
@@ -254,11 +261,11 @@ export function BookingExperience({
       <section className="mt-4 py-3 border-y border-[#16231b]/12 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs sm:text-sm text-[#16231b]/85">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
           <span className="font-semibold text-[#16231b]">Tarifs :</span>
-          <span>06h–17h · 5 000 FCFA</span>
+          <span>06h–17h · {formatFcfa(DAY_RATE_FCFA)}</span>
           <span aria-hidden="true">·</span>
-          <span>18h–05h · 7 500 FCFA</span>
+          <span>18h–05h · {formatFcfa(NIGHT_RATE_FCFA)}</span>
           <span aria-hidden="true">·</span>
-          <span>Acompte 30 %</span>
+          <span>Acompte {DEPOSIT_PERCENTAGE} %</span>
         </div>
         <span className="font-bold text-[#1f5d3a] tabular-nums">
           {isLoadingDay
@@ -376,13 +383,19 @@ export function BookingExperience({
       </section>
 
       {/* Sticky bottom booking form */}
-      {selectedSlot && !confirmedBooking && (
-        <div
-          role="dialog"
-          aria-modal="false"
-          aria-label="Finaliser la réservation"
-          className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-[#e8590c] shadow-[0_-10px_28px_rgba(22,35,27,0.16)]"
-        >
+      <AnimatePresence>
+        {selectedSlot && !confirmedBooking && (
+          <motion.div
+            key="sticky-booking-form"
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            role="dialog"
+            aria-modal="false"
+            aria-label="Finaliser la réservation"
+            className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-[#e8590c] shadow-[0_-10px_28px_rgba(22,35,27,0.16)]"
+          >
           <div className="max-w-xl mx-auto px-3.5 sm:px-4 pt-3 pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -475,16 +488,23 @@ export function BookingExperience({
               </button>
             </form>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Post-booking sticky confirmation */}
-      {confirmedBooking && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-[#1f5d3a] shadow-[0_-10px_28px_rgba(22,35,27,0.18)]"
-        >
+      <AnimatePresence>
+        {confirmedBooking && (
+          <motion.div
+            key="sticky-booking-confirmation"
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-[#1f5d3a] shadow-[0_-10px_28px_rgba(22,35,27,0.18)]"
+          >
           <div className="max-w-xl mx-auto px-3.5 sm:px-4 pt-3.5 pb-4">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 text-[#1f5d3a] min-w-0">
@@ -584,8 +604,9 @@ export function BookingExperience({
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

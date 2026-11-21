@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { LegalFooter } from '@/src/components/LegalFooter';
-import { PWAInstallButton } from '@/src/components/PWAInstallButton';
+import { Navbar } from '@/src/components/Navbar';
 import { SkipLink } from '@/src/components/SkipLink';
 import { ReservationSuccessCard } from '@/src/components/ReservationSuccessCard';
 import { isDatabaseConfigured } from '@/src/db';
@@ -22,22 +22,18 @@ export default async function ReservationPage({ params }: ReservationPageProps) 
   return (
     <div className="min-h-screen bg-[#f8f7f2] text-[#16231b]">
       <SkipLink />
+      <Navbar />
 
-      <div className="h-1 w-full bg-[#e8590c]" aria-hidden="true" />
-
-      <header className="bg-[#1f5d3a] text-[#f8f7f2] border-b border-[#16231b]/15">
-        <div className="max-w-xl mx-auto px-3.5 sm:px-4 py-3.5 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight leading-none truncate">
-              Élite Sport Godomey
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/85 truncate">
-              Fiche de réservation
-            </p>
-          </div>
-          <PWAInstallButton />
+      <section className="bg-[#1f5d3a] text-[#f8f7f2] border-b border-[#16231b]/15">
+        <div className="max-w-xl mx-auto px-3.5 sm:px-4 py-4">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight leading-none">
+            Fiche de réservation
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm text-[#f8f7f2]/85">
+            Élite Sport Godomey · Godomey, Cotonou
+          </p>
         </div>
-      </header>
+      </section>
 
       <main id="main" className="max-w-xl mx-auto px-3.5 sm:px-4 py-6">
         {booking ? (

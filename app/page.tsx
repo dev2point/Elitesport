@@ -1,52 +1,66 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { BookingSteps } from '@/src/components/BookingSteps';
+import { FinalCtaBanner } from '@/src/components/FinalCtaBanner';
 import { LandingHero } from '@/src/components/LandingHero';
+import { LandingShowcase } from '@/src/components/LandingShowcase';
 import { LegalFooter } from '@/src/components/LegalFooter';
-import { PWAInstallButton } from '@/src/components/PWAInstallButton';
+import { Navbar } from '@/src/components/Navbar';
 import { PriceStrip } from '@/src/components/PriceStrip';
 import { SkipLink } from '@/src/components/SkipLink';
+import { isDatabaseConfigured } from '@/src/db';
+import { getDaySlots } from '@/src/lib/bookings';
+import { getPortoNovoDateStr } from '@/src/lib/timezone';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Élite Sport Godomey — Le terrain de Godomey, ouvert 24h/24',
   description:
-    "Élite Sport Godomey — Godomey, Cotonou, Bénin. Un créneau d'une heure, réservé depuis votre téléphone.",
+    'Élite Sport Godomey — Terrain de football synthétique à Godomey, Cotonou, Bénin. Réservez votre créneau d’une heure en direct, 24h/24.',
 };
 
-export default function HomePage() {
+async function getSafeAvailableTodayCount(): Promise<number | null> {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const now = new Date();
+    const todayStr = getPortoNovoDateStr(now);
+    const slotsPromise = getDaySlots(todayStr, undefined, now);
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timeoutId = setTimeout(() => resolve(null), 1200);
+    });
+
+    const slots = await Promise.race([slotsPromise, timeoutPromise]);
+    if (!slots) {
+      return null;
+    }
+    return slots.filter((slot) => slot.state === 'free').length;
+  } catch {
+    return null;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+export default async function HomePage() {
+  const availableTodayCount = await getSafeAvailableTodayCount();
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SkipLink />
-
-      <div className="h-1 w-full bg-line" aria-hidden="true" />
-
-      <header className="border-b border-border-subtle bg-canvas">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3.5 py-3.5 sm:px-4">
-          <div className="min-w-0">
-            <Link
-              href="/"
-              className="inline-flex min-h-11 items-center rounded-sm font-display text-xl font-bold leading-none text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            >
-              Élite Sport Godomey
-            </Link>
-            <p className="mt-1 text-sm text-text-secondary">
-              Godomey, Cotonou, Bénin
-            </p>
-          </div>
-          <PWAInstallButton />
-        </div>
-      </header>
+      <Navbar />
 
       <main id="main">
-        <LandingHero />
-        <BookingSteps />
+        <LandingHero availableTodayCount={availableTodayCount} />
+        <LandingShowcase />
         <PriceStrip />
-
-        <section className="mx-auto max-w-5xl px-3.5 pb-16 sm:px-4 md:pb-24">
-          <p className="text-center text-sm text-text-secondary">
-            Réservation en ligne, confirmation par WhatsApp.
-          </p>
-        </section>
+        <BookingSteps />
+        <FinalCtaBanner />
       </main>
 
       <LegalFooter />

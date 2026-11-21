@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { LegalFooter } from './LegalFooter';
 import { LegalToc, type LegalTocItem } from './LegalToc';
-import { PWAInstallButton } from './PWAInstallButton';
+import { Navbar } from './Navbar';
 import { PlaceholderField } from './PlaceholderField';
 import { SkipLink } from './SkipLink';
 
@@ -23,25 +23,7 @@ export function LegalPageShell({
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <SkipLink />
-
-      <div className="h-1 w-full bg-line" aria-hidden="true" />
-
-      <header className="border-b border-border-subtle bg-canvas">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3.5 py-3.5 sm:px-4">
-          <div className="min-w-0">
-            <Link
-              href="/"
-              className="inline-flex min-h-11 items-center rounded-sm font-display text-xl font-bold leading-none text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            >
-              Élite Sport Godomey
-            </Link>
-            <p className="mt-1 text-sm text-text-secondary">
-              Godomey, Cotonou, Bénin
-            </p>
-          </div>
-          <PWAInstallButton />
-        </div>
-      </header>
+      <Navbar />
 
       <main id="main" className="mx-auto max-w-2xl px-3.5 py-10 sm:px-4 sm:py-14">
         <div className="space-y-10">
