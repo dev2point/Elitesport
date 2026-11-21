@@ -17,7 +17,7 @@ export function PWAInstallButton() {
       <button
         type="button"
         onClick={install}
-        className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#e8590c] hover:bg-[#cf4c07] text-white text-sm font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f8f7f2] transition-colors cursor-pointer"
+        className="min-h-[44px] px-3.5 py-2 rounded-xl bg-line-strong hover:bg-[#9c3703] text-canvas text-sm font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-line-strong transition-colors cursor-pointer"
       >
         <Download className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span>Installer</span>
@@ -31,7 +31,7 @@ export function PWAInstallButton() {
         <button
           type="button"
           onClick={() => setShowIOSGuide(true)}
-          className="min-h-[44px] px-3 py-2 rounded-xl bg-white/12 hover:bg-white/20 text-[#f8f7f2] text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f8f7f2] transition-colors cursor-pointer"
+          className="min-h-[44px] px-3 py-2 rounded-xl bg-ink hover:bg-pitch text-canvas text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-line-strong transition-colors cursor-pointer"
         >
           <Download className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>Installer</span>
