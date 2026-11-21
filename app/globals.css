@@ -4,9 +4,25 @@
   --font-sans: var(--font-barlow), system-ui, -apple-system, sans-serif;
   --font-display: var(--font-barlow-condensed), system-ui, -apple-system, sans-serif;
   --color-pitch: #1f5d3a;
+  --color-pitch-hover: #17482c;
   --color-line: #e8590c;
+  --color-line-strong: #b84304;
+  --color-on-line: #16231b;
   --color-canvas: #f8f7f2;
+  --color-surface-card: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-muted: #efeee8;
   --color-ink: #16231b;
+  --color-text-primary: #16231b;
+  --color-text-secondary: #3c4a41;
+  --color-text-tertiary: #5a665d;
+  --color-border-subtle: #e2e1da;
+  --color-border-strong: #6b7a70;
+  --color-focus-ring: #b84304;
+  --color-status-error: #9e3602;
+  --color-status-success: #1f5d3a;
+  --color-status-warning: #b84304;
+  --color-on-accent: #ffffff;
 }
 
 @layer base {
@@ -30,4 +46,31 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes pitch-line-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.pitch-line {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: pitch-line-draw 600ms ease-out both;
+}
+
+.pitch-line--2 {
+  animation-delay: 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-line,
+  .pitch-line--2 {
+    animation: none;
+    transform: scaleX(1);
+  }
 }
