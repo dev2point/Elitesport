@@ -249,7 +249,7 @@ export function ReservationSuccessCard({
         )}
 
         <Link
-          href="/"
+          href="/reserver"
           className="w-full min-h-[46px] px-4 py-2.5 rounded-xl border border-[#16231b]/18 text-sm font-semibold text-[#16231b] hover:bg-[#16231b]/5 flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
