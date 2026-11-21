@@ -1,0 +1,171 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - heading "Élite Sport Godomey" [level=1] [ref=e7]
+      - paragraph [ref=e8]: Godomey, Cotonou · Terrain synthétique · 24h/24
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - region "Choix du jour" [ref=e11]:
+        - generic [ref=e12]:
+          - heading "Choisir un jour" [level=2] [ref=e13]
+          - generic [ref=e14]: Mercredi 18 Nov 2026
+        - generic [ref=e15]:
+          - button "Auj. 18 Nov" [pressed] [ref=e16] [cursor=pointer]:
+            - generic [ref=e17]: Auj.
+            - generic [ref=e18]: "18"
+            - generic [ref=e19]: Nov
+          - button "Jeu 19 Nov" [ref=e21] [cursor=pointer]:
+            - generic [ref=e22]: Jeu
+            - generic [ref=e23]: "19"
+            - generic [ref=e24]: Nov
+          - button "Ven 20 Nov" [ref=e25] [cursor=pointer]:
+            - generic [ref=e26]: Ven
+            - generic [ref=e27]: "20"
+            - generic [ref=e28]: Nov
+          - button "Sam 21 Nov" [ref=e29] [cursor=pointer]:
+            - generic [ref=e30]: Sam
+            - generic [ref=e31]: "21"
+            - generic [ref=e32]: Nov
+          - button "Dim 22 Nov" [ref=e33] [cursor=pointer]:
+            - generic [ref=e34]: Dim
+            - generic [ref=e35]: "22"
+            - generic [ref=e36]: Nov
+          - button "Lun 23 Nov" [ref=e37] [cursor=pointer]:
+            - generic [ref=e38]: Lun
+            - generic [ref=e39]: "23"
+            - generic [ref=e40]: Nov
+          - button "Mar 24 Nov" [ref=e41] [cursor=pointer]:
+            - generic [ref=e42]: Mar
+            - generic [ref=e43]: "24"
+            - generic [ref=e44]: Nov
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: "Tarifs :"
+          - generic [ref=e48]: 06h–17h · 5 000 FCFA
+          - generic [aria-hidden] [ref=e49]: ·
+          - generic [ref=e50]: 18h–05h · 7 500 FCFA
+          - generic [aria-hidden] [ref=e51]: ·
+          - generic [ref=e52]: Acompte 30 %
+        - generic [ref=e53]: 8 créneaux libres
+      - region "Créneaux disponibles" [ref=e54]:
+        - generic [ref=e55]:
+          - button "00h–01h, 7 500 FCFA, Créneau passé" [disabled] [ref=e56]:
+            - generic [ref=e57]: 00h–01h
+            - generic [ref=e59]:
+              - generic [ref=e60]: 7 500 F
+              - generic [ref=e61]: Passé
+          - button "01h–02h, 7 500 FCFA, Créneau passé" [disabled] [ref=e62]:
+            - generic [ref=e63]: 01h–02h
+            - generic [ref=e65]:
+              - generic [ref=e66]: 7 500 F
+              - generic [ref=e67]: Passé
+          - button "02h–03h, 7 500 FCFA, Créneau passé" [disabled] [ref=e68]:
+            - generic [ref=e69]: 02h–03h
+            - generic [ref=e71]:
+              - generic [ref=e72]: 7 500 F
+              - generic [ref=e73]: Passé
+          - button "03h–04h, 7 500 FCFA, Créneau passé" [disabled] [ref=e74]:
+            - generic [ref=e75]: 03h–04h
+            - generic [ref=e77]:
+              - generic [ref=e78]: 7 500 F
+              - generic [ref=e79]: Passé
+          - button "04h–05h, 7 500 FCFA, Créneau passé" [disabled] [ref=e80]:
+            - generic [ref=e81]: 04h–05h
+            - generic [ref=e83]:
+              - generic [ref=e84]: 7 500 F
+              - generic [ref=e85]: Passé
+          - button "05h–06h, 7 500 FCFA, Créneau passé" [disabled] [ref=e86]:
+            - generic [ref=e87]: 05h–06h
+            - generic [ref=e89]:
+              - generic [ref=e90]: 7 500 F
+              - generic [ref=e91]: Passé
+          - button "06h–07h, 5 000 FCFA, Créneau passé" [disabled] [ref=e92]:
+            - generic [ref=e93]: 06h–07h
+            - generic [ref=e95]:
+              - generic [ref=e96]: 5 000 F
+              - generic [ref=e97]: Passé
+          - button "07h–08h, 5 000 FCFA, Créneau passé" [disabled] [ref=e98]:
+            - generic [ref=e99]: 07h–08h
+            - generic [ref=e101]:
+              - generic [ref=e102]: 5 000 F
+              - generic [ref=e103]: Passé
+          - button "08h–09h, 5 000 FCFA, Créneau passé" [disabled] [ref=e104]:
+            - generic [ref=e105]: 08h–09h
+            - generic [ref=e107]:
+              - generic [ref=e108]: 5 000 F
+              - generic [ref=e109]: Passé
+          - button "09h–10h, 5 000 FCFA, Créneau passé" [disabled] [ref=e110]:
+            - generic [ref=e111]: 09h–10h
+            - generic [ref=e113]:
+              - generic [ref=e114]: 5 000 F
+              - generic [ref=e115]: Passé
+          - button "10h–11h, 5 000 FCFA, Créneau passé" [disabled] [ref=e116]:
+            - generic [ref=e117]: 10h–11h
+            - generic [ref=e119]:
+              - generic [ref=e120]: 5 000 F
+              - generic [ref=e121]: Passé
+          - button "11h–12h, 5 000 FCFA, Créneau passé" [disabled] [ref=e122]:
+            - generic [ref=e123]: 11h–12h
+            - generic [ref=e125]:
+              - generic [ref=e126]: 5 000 F
+              - generic [ref=e127]: Passé
+          - button "12h–13h, 5 000 FCFA, Créneau passé" [disabled] [ref=e128]:
+            - generic [ref=e129]: 12h–13h
+            - generic [ref=e131]:
+              - generic [ref=e132]: 5 000 F
+              - generic [ref=e133]: Passé
+          - button "13h–14h, 5 000 FCFA, Créneau passé" [disabled] [ref=e134]:
+            - generic [ref=e135]: 13h–14h
+            - generic [ref=e137]:
+              - generic [ref=e138]: 5 000 F
+              - generic [ref=e139]: Passé
+          - button "14h–15h, 5 000 FCFA, Créneau passé" [disabled] [ref=e140]:
+            - generic [ref=e141]: 14h–15h
+            - generic [ref=e143]:
+              - generic [ref=e144]: 5 000 F
+              - generic [ref=e145]: Passé
+          - button "15h–16h, 5 000 FCFA, Créneau passé" [disabled] [ref=e146]:
+            - generic [ref=e147]: 15h–16h
+            - generic [ref=e149]:
+              - generic [ref=e150]: 5 000 F
+              - generic [ref=e151]: Passé
+          - button "16h–17h, 5 000 FCFA, Libre" [ref=e152] [cursor=pointer]:
+            - generic [ref=e153]: 16h–17h
+            - generic [ref=e155]:
+              - generic [ref=e156]: 5 000 F
+              - generic [ref=e157]: Libre
+          - button "17h–18h, 5 000 FCFA, Libre" [ref=e158] [cursor=pointer]:
+            - generic [ref=e159]: 17h–18h
+            - generic [ref=e161]:
+              - generic [ref=e162]: 5 000 F
+              - generic [ref=e163]: Libre
+          - button "18h–19h, 7 500 FCFA, Libre" [ref=e164] [cursor=pointer]:
+            - generic [ref=e165]: 18h–19h
+            - generic [ref=e167]:
+              - generic [ref=e168]: 7 500 F
+              - generic [ref=e169]: Libre
+          - button "19h–20h, 7 500 FCFA, Libre" [ref=e170] [cursor=pointer]:
+            - generic [ref=e171]: 19h–20h
+            - generic [ref=e173]:
+              - generic [ref=e174]: 7 500 F
+              - generic [ref=e175]: Libre
+          - button "20h–21h, 7 500 FCFA, Libre" [ref=e176] [cursor=pointer]:
+            - generic [ref=e177]: 20h–21h
+            - generic [ref=e179]:
+              - generic [ref=e180]: 7 500 F
+              - generic [ref=e181]: Libre
+          - button "21h–22h, 7 500 FCFA, Libre" [ref=e182] [cursor=pointer]:
+            - generic [ref=e183]: 21h–22h
+            - generic [ref=e185]:
+              - generic [ref=e186]: 7 500 F
+              - generic [ref=e187]: Libre
+          - button "22h–23h, 7 500 FCFA, Libre" [ref=e188] [cursor=pointer]:
+            - generic [ref=e189]: 22h–23h
+            - generic [ref=e191]:
+              - generic [ref=e192]: 7 500 F
+              - generic [ref=e193]: Libre
+          - button "23h–00h, 7 500 FCFA, Libre" [ref=e194] [cursor=pointer]:
+            - generic [ref=e195]: 23h–00h
+            - generic [ref=e197]:
+              - generic [ref=e198]: 7 500 F
+              - generic [ref=e199]: Libre
