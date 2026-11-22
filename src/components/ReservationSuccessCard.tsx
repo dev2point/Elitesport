@@ -8,6 +8,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   Clock,
+  FileDown,
   MessageCircle,
   XCircle,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ import {
 } from '@/src/lib/calendar';
 import type { FeexPayWidgetConfig } from '@/src/lib/feexpay';
 import { formatFcfa } from '@/src/lib/pricing';
+import { BookingQrCode } from './BookingQrCode';
 import { FeexPayDepositWidget } from './FeexPayDepositWidget';
 
 interface ReservationSuccessCardProps {
@@ -243,6 +245,25 @@ export function ReservationSuccessCard({
         </div>
       </dl>
 
+      {/* QR Verification Pass */}
+      {!isCancelled && (
+        <div className="mt-4 p-3.5 rounded-xl bg-[#f8f7f2] border border-[#16231b]/14 flex items-center gap-3.5">
+          <BookingQrCode bookingId={booking.id} reference={booking.reference} />
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#1f5d3a]">
+              Pass terrain · Code QR
+            </p>
+            <p className="mt-1 text-xs sm:text-sm text-[#16231b]/80 leading-snug">
+              Présentez ce code QR ou votre fiche PDF au gérant lors de votre
+              arrivée au terrain.
+            </p>
+            <p className="mt-1.5 text-xs font-bold text-[#b84304] tabular-nums">
+              Réf. : {booking.reference}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Primary Actions */}
       <div className="mt-5 space-y-2.5">
         {isPending && (
@@ -289,13 +310,22 @@ export function ReservationSuccessCard({
         {!isCancelled && (
           <>
             <a
+              href={`/api/bookings/${booking.id}/pdf`}
+              download={`fiche-reservation-${booking.reference}.pdf`}
+              className={`w-full min-h-[50px] px-4 py-3 rounded-xl font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors ${
+                isConfirmed || isCompleted
+                  ? 'bg-[#1f5d3a] hover:bg-[#17482c] text-white'
+                  : 'bg-[#16231b] hover:bg-[#23362a] text-white'
+              }`}
+            >
+              <FileDown className="w-5 h-5 shrink-0" aria-hidden="true" />
+              <span>Télécharger la fiche (PDF)</span>
+            </a>
+
+            <a
               href={icsHref}
               download={`reservation-${booking.reference}.ics`}
-              className={`w-full min-h-[50px] px-4 py-3 rounded-xl font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors ${
-                isConfirmed
-                  ? 'bg-[#1f5d3a] hover:bg-[#17482c] text-white'
-                  : 'bg-[#f8f7f2] hover:bg-[#16231b]/5 text-[#16231b] border border-[#16231b]/20'
-              }`}
+              className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#f8f7f2] hover:bg-[#16231b]/5 text-[#16231b] border border-[#16231b]/20 font-display text-base sm:text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors"
             >
               <CalendarPlus className="w-5 h-5 shrink-0" aria-hidden="true" />
               <span>Ajouter au calendrier</span>

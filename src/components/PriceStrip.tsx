@@ -62,7 +62,7 @@ export function PriceStrip() {
             </p>
             <h2
               id="price-strip-title"
-              className="mt-2 font-display text-3xl font-bold leading-none text-ink sm:text-4xl"
+              className="mt-2 font-display text-3xl font-bold leading-[1.15] tracking-[-0.02em] text-ink sm:text-4xl"
             >
               {formatFcfa(HOURLY_RATE_FCFA)} par heure, jour et nuit.
             </h2>

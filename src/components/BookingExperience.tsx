@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  FileDown,
   MessageCircle,
   Moon,
   RefreshCw,
@@ -499,6 +500,15 @@ export function BookingExperience({
               {confirmedBooking.reference}.
             </p>
           )}
+
+          <a
+            href={`/api/bookings/${confirmedBooking.id}/pdf`}
+            download={`fiche-reservation-${confirmedBooking.reference}.pdf`}
+            className="w-full min-h-[46px] px-4 py-2 rounded-xl bg-[#16231b] hover:bg-[#23362a] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors"
+          >
+            <FileDown className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Télécharger la fiche (PDF + QR)</span>
+          </a>
 
           <div className="grid grid-cols-2 gap-2">
             {icsHref && (

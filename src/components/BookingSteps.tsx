@@ -24,6 +24,7 @@ const steps = [
 export function BookingSteps() {
   return (
     <section
+      id="comment-ca-marche"
       aria-labelledby="booking-steps-title"
       className="border-t border-border-subtle bg-white py-14 sm:py-20"
     >

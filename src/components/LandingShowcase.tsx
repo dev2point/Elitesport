@@ -41,7 +41,7 @@ const CAPABILITIES = [
 export function LandingShowcase() {
   return (
     <section
-      id="terrain"
+      id="a-propos"
       aria-labelledby="showcase-heading"
       className="border-t border-border-subtle bg-surface-muted/65 py-14 sm:py-20"
     >
@@ -58,7 +58,7 @@ export function LandingShowcase() {
           </p>
           <h2
             id="showcase-heading"
-            className="mt-2 font-display text-3xl font-bold leading-[0.98] text-ink sm:text-4xl"
+            className="mt-2 font-display text-3xl font-bold leading-[1.12] tracking-[-0.02em] text-ink sm:text-4xl"
           >
             Conçu pour jouer sans contretemps, de l’après-midi jusqu’à l’aube.
           </h2>

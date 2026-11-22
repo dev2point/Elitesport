@@ -4,19 +4,18 @@ import { FinalCtaBanner } from '@/src/components/FinalCtaBanner';
 import { LandingHero } from '@/src/components/LandingHero';
 import { LandingShowcase } from '@/src/components/LandingShowcase';
 import { LegalFooter } from '@/src/components/LegalFooter';
-import { Navbar } from '@/src/components/Navbar';
 import { PriceStrip } from '@/src/components/PriceStrip';
 import { SkipLink } from '@/src/components/SkipLink';
 import { isDatabaseConfigured } from '@/src/db';
 import { getDaySlots } from '@/src/lib/bookings';
-import { getPortoNovoDateStr } from '@/src/lib/timezone';
+import { getPortoNovoDateStr, getUpcoming7Days } from '@/src/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Élite Sport Godomey — Le terrain de Godomey, ouvert 24h/24',
+  title: 'TERRAIN — Réserve ton terrain de football au Bénin',
   description:
-    'Élite Sport Godomey — Terrain de football synthétique à Godomey, Cotonou, Bénin. Réservez votre créneau d’une heure en direct, 24h/24.',
+    'Trouve et réserve les meilleurs terrains de football à Cotonou et au Bénin. Choisis ton créneau, invite ton équipe et profite du jeu.',
 };
 
 async function getSafeAvailableTodayCount(): Promise<number | null> {
@@ -48,15 +47,16 @@ async function getSafeAvailableTodayCount(): Promise<number | null> {
 }
 
 export default async function HomePage() {
+  const now = new Date();
+  const days = getUpcoming7Days(now);
   const availableTodayCount = await getSafeAvailableTodayCount();
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="min-h-screen bg-[#F8FAF7] text-[#17231D]">
       <SkipLink />
-      <Navbar />
 
       <main id="main">
-        <LandingHero availableTodayCount={availableTodayCount} />
+        <LandingHero days={days} availableTodayCount={availableTodayCount} />
         <LandingShowcase />
         <PriceStrip />
         <BookingSteps />

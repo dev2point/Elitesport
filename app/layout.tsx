@@ -1,32 +1,32 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
-import { Barlow, Barlow_Condensed } from 'next/font/google';
+import { Manrope, Plus_Jakarta_Sans } from 'next/font/google';
 import { MotionProvider } from '@/src/components/MotionProvider';
 import { OfflineBanner } from '@/src/components/OfflineBanner';
 import './globals.css';
 
-const barlow = Barlow({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-barlow',
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-jakarta',
   display: 'swap',
 });
 
-const barlowCondensed = Barlow_Condensed({
+const manrope = Manrope({
   subsets: ['latin'],
-  weight: ['600', '700'],
-  variable: '--font-barlow-condensed',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-manrope',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Élite Sport Godomey — Terrain de football 24h/24 à Cotonou',
+  title: 'TERRAIN — Réserve ton terrain de football au Bénin',
   description:
-    'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24, avec blocage de 15 minutes et confirmation par WhatsApp.',
+    'Trouve et réserve les meilleurs terrains de football à Cotonou et au Bénin. Choisis ton créneau, invite ton équipe et profite du jeu.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Élite Sport',
+    title: 'TERRAIN',
   },
   icons: {
     icon: [
@@ -36,24 +36,24 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'Élite Sport Godomey — Terrain de football 24h/24 à Cotonou',
+    title: 'TERRAIN — Réserve ton terrain de football au Bénin',
     description:
-      'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24, avec blocage de 15 minutes et confirmation par WhatsApp.',
+      'Trouve et réserve les meilleurs terrains de football à Cotonou et au Bénin. Choisis ton créneau, invite ton équipe et profite du jeu.',
     type: 'website',
     locale: 'fr_BJ',
   },
   twitter: {
     card: 'summary',
-    title: 'Élite Sport Godomey',
+    title: 'TERRAIN — Bénin',
     description:
-      'Terrain synthétique à Godomey, Cotonou. Réservez un créneau d’une heure, 24h/24.',
+      'Trouve et réserve les meilleurs terrains de football à Cotonou et au Bénin.',
   },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#1f5d3a',
+  themeColor: '#123D2B',
 };
 
 export default function RootLayout({
@@ -64,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${barlow.variable} ${barlowCondensed.variable} scroll-smooth`}
+      className={`${plusJakartaSans.variable} ${manrope.variable} scroll-smooth`}
     >
       <head>
         {process.env.NODE_ENV === "development" && (
@@ -83,7 +83,7 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className="min-h-screen bg-[#f8f7f2] text-[#16231b] antialiased overflow-x-hidden">
+      <body className="min-h-screen bg-[#F8FAF7] text-[#17231D] antialiased overflow-x-hidden">
         <MotionProvider>
           <OfflineBanner />
           {children}

@@ -43,7 +43,7 @@ export function FinalCtaBanner() {
           <div className="max-w-xl">
             <h2
               id="final-cta-heading"
-              className="font-display text-3xl sm:text-4xl font-bold leading-[0.98] text-white"
+              className="font-display text-3xl sm:text-4xl font-bold leading-[1.12] tracking-[-0.02em] text-white"
             >
               Votre prochain match à Godomey commence maintenant.
             </h2>

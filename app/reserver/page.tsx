@@ -80,7 +80,7 @@ export default async function ReserverPage({ searchParams }: ReserverPageProps) 
                 <span>Ouvert 24h/24</span>
               </p>
 
-              <h1 className="mt-2 font-display text-3xl min-[380px]:text-4xl sm:text-5xl font-bold tracking-tight leading-[0.95] text-white text-balance">
+              <h1 className="mt-2 font-display text-3xl min-[380px]:text-4xl sm:text-5xl font-bold tracking-[-0.02em] leading-[1.08] text-white text-balance">
                 Choisissez votre heure de jeu
               </h1>
 

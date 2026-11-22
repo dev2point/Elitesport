@@ -1,250 +1,343 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Image, { type StaticImageData } from 'next/image';
+import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Clock, MapPin } from 'lucide-react';
-import heroTwilightImg from '@/src/assets/images/hero_pitch_twilight_1795268192805.jpg';
+import { useRouter } from 'next/navigation';
+import { motion } from 'motion/react';
+import { ArrowUpRight, Calendar, Clock, MapPin, Search } from 'lucide-react';
+import beninGoldenPitchImg from '@/src/assets/images/benin_golden_pitch_1795347414040.jpg';
 import heroNightMatchImg from '@/src/assets/images/hero_soccer_night_1795268211358.jpg';
-import heroTurfDetailImg from '@/src/assets/images/hero_turf_detail_1795268193867.jpg';
-import {
-  DEPOSIT_PERCENTAGE,
-  HOURLY_RATE_FCFA,
-  PENDING_HOLD_MINUTES,
-  formatFcfa,
-} from '@/src/lib/pricing';
+import playerAvatarOneImg from '@/src/assets/images/player_avatar_one_1795347414531.jpg';
+import playerAvatarTwoImg from '@/src/assets/images/player_avatar_two_1795347414216.jpg';
+import { HOURLY_RATE_FCFA, formatFcfa } from '@/src/lib/pricing';
+import type { DayOption } from '@/src/lib/timezone';
+import { Navbar } from './Navbar';
 
-interface HeroScene {
-  id: string;
-  tabLabel: string;
-  captionTitle: string;
-  captionSubtitle: string;
-  image: StaticImageData;
-  alt: string;
-}
+type FieldFormat = '5v5' | '7v7' | '11v11';
 
-const HERO_SCENES: readonly HeroScene[] = [
-  {
-    id: 'twilight',
-    tabLabel: 'Vue LED',
-    captionTitle: 'Éclairage LED intégral 24h/24',
-    captionSubtitle: 'Godomey · Terrain synthétique clôturé',
-    image: heroTwilightImg,
-    alt: 'Vue d’ensemble du terrain synthétique Élite Sport Godomey éclairé par projecteurs LED au crépuscule',
-  },
-  {
-    id: 'night',
-    tabLabel: 'Match nuit',
-    captionTitle: 'Sessions nocturnes 18h – 05h',
-    captionSubtitle: 'Visibilité nette et fraîcheur en soirée',
-    image: heroNightMatchImg,
-    alt: 'Joueurs en match nocturne sur le gazon synthétique vert avec lignes orange sous projecteurs',
-  },
-  {
-    id: 'turf',
-    tabLabel: 'Gazon pro',
-    captionTitle: 'Surface synthétique drainante',
-    captionSubtitle: 'Lignes orange nettes · Rebond régulier',
-    image: heroTurfDetailImg,
-    alt: 'Détail du gazon synthétique vert avec ligne orange et poteau de corner au soleil',
-  },
-];
+const FIELD_FORMATS: readonly FieldFormat[] = ['5v5', '7v7', '11v11'];
+
+const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
+  const next = (hour + 1) % 24;
+  return {
+    hour,
+    label: `${hour.toString().padStart(2, '0')}h – ${next
+      .toString()
+      .padStart(2, '0')}h`,
+  };
+});
 
 interface LandingHeroProps {
+  days: DayOption[];
   availableTodayCount: number | null;
 }
 
-export function LandingHero({ availableTodayCount }: LandingHeroProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [autoPlay, setAutoPlay] = useState(true);
+export function LandingHero({ days, availableTodayCount }: LandingHeroProps) {
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState<string>(
+    days[0]?.dateStr ?? ''
+  );
+  const [selectedHour, setSelectedHour] = useState<number>(18);
+  const [selectedFormat, setSelectedFormat] = useState<FieldFormat>('7v7');
+  const [pitchImgError, setPitchImgError] = useState(false);
 
-  useEffect(() => {
-    if (!autoPlay) return;
-    const timer = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % HERO_SCENES.length);
-    }, 5500);
-    return () => clearInterval(timer);
-  }, [autoPlay]);
-
-  const currentScene = HERO_SCENES[activeIndex];
+  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (selectedDate) {
+      params.set('date', selectedDate);
+    }
+    params.set('hour', String(selectedHour));
+    params.set('format', selectedFormat);
+    router.push(`/reserver?${params.toString()}`);
+  }
 
   return (
     <section
       aria-labelledby="hero-heading"
-      className="mx-auto max-w-5xl px-3.5 pt-8 pb-12 sm:px-4 sm:pt-12 sm:pb-16 md:pt-16 md:pb-20"
+      className="w-full"
     >
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:items-center md:gap-10">
-        {/* Copy & conversion column */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-6 flex flex-col items-start"
-        >
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm font-semibold text-pitch">
-            <MapPin className="h-4 w-4 shrink-0 text-line-strong" aria-hidden="true" />
-            <span>Godomey, Cotonou</span>
-            <span aria-hidden="true" className="text-border-strong">
-              ·
-            </span>
-            <span>Ouvert 24h/24</span>
-          </p>
+      {/* Full-Bleed Edge-to-Edge Atmospheric Pitch Canvas */}
+      <div className="group/hero relative w-full overflow-hidden bg-[#123D2B]">
+        {/* Background Pitch Photography with Subtle Hover Zoom */}
+        {!pitchImgError ? (
+          <Image
+            src={beninGoldenPitchImg}
+            alt="Terrain de football synthétique moderne à Cotonou au Bénin au coucher du soleil avec joueurs et éclairage"
+            fill
+            priority
+            sizes="100vw"
+            referrerPolicy="no-referrer"
+            onError={() => setPitchImgError(true)}
+            className="object-cover object-center transition-transform duration-700 ease-out group-hover/hero:scale-[1.03]"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#123D2B] to-[#0A2217]" />
+        )}
 
-          <h1
-            id="hero-heading"
-            className="mt-3 font-display text-[2.6rem] font-bold leading-[0.94] tracking-[-0.015em] text-ink text-balance sm:text-[3.25rem] md:text-[3.75rem]"
-          >
-            Le terrain synthétique de Godomey, prêt à toute heure.
-          </h1>
+        {/* Measured Contrast Scrims for WCAG AAA Text Legibility */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0A2116]/90 via-[#123D2B]/62 to-[#123D2B]/20"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0A2116]/80 via-transparent to-[#0A2116]/45"
+        />
 
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-text-secondary sm:text-lg">
-            Consultez les 24 créneaux du jour en direct sur votre téléphone,
-            bloquez votre heure pendant {PENDING_HOLD_MINUTES} minutes et
-            confirmez directement sur WhatsApp.
-          </p>
+        {/* Foreground Interactive Content */}
+        <div className="relative z-10 mx-auto flex min-h-[600px] lg:min-h-[680px] w-full max-w-[1360px] flex-col justify-between px-4 pt-4 pb-10 sm:px-6 sm:pt-6 sm:pb-12 lg:px-10 lg:pt-8 lg:pb-14">
+          {/* Top Translucent Glass Navigation Bar */}
+          <Navbar variant="hero" />
 
-          {/* Primary conversion CTA row */}
-          <div className="mt-6 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-            <Link
-              href="/reserver"
-              className="group min-h-[52px] px-6 py-3 rounded-xl bg-[#c94705] hover:bg-[#b23d03] text-white font-display text-xl font-bold tracking-wide inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16231b]"
+          {/* Main 2-Column Composition inside Hero */}
+          <div className="mt-10 sm:mt-14 lg:mt-16 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end lg:gap-10">
+            {/* LEFT COLUMN: Editorial Headline, Value Prop, CTAs & Avatars */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-6 pb-1 lg:pb-4"
             >
-              <span>Réserver un créneau</span>
-              <ArrowRight
-                className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1"
-                aria-hidden="true"
-              />
-            </Link>
+              {/* Eyebrow Glass Tag */}
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 backdrop-blur-sm font-hero text-[11px] sm:text-xs font-bold uppercase tracking-[0.07em] text-white/95">
+                <span aria-hidden="true">⚽</span>
+                <span>LE FOOTBALL À PORTÉE DE CLIC</span>
+              </p>
 
-            <a
-              href="#tarifs"
-              className="min-h-[52px] px-5 py-3 rounded-xl border border-[#16231b]/20 bg-white hover:border-[#1f5d3a] text-[#16231b] text-base font-semibold inline-flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b84304]"
-            >
-              Voir les tarifs
-            </a>
-          </div>
-
-          {/* Real-time slot hint or key guarantee */}
-          <div className="mt-5 pt-4 w-full border-t border-border-subtle flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-text-secondary tabular-nums">
-            {typeof availableTodayCount === 'number' && (
-              <>
-                <span className="inline-flex items-center gap-1.5 font-bold text-pitch">
-                  <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {availableTodayCount > 0
-                    ? `${availableTodayCount} créneau${availableTodayCount > 1 ? 'x' : ''} libre${availableTodayCount > 1 ? 's' : ''} aujourd’hui`
-                    : 'Prochains créneaux dès demain'}
+              {/* Headline */}
+              <h1
+                id="hero-heading"
+                className="mt-5 font-hero text-[2.35rem] font-extrabold leading-[1.06] tracking-[-0.025em] text-white text-balance sm:text-[3.25rem] lg:text-[3.75rem]"
+              >
+                Ton prochain match{' '}
+                <span className="italic font-semibold text-[#32CD75]">
+                  commence ici.
                 </span>
-                <span aria-hidden="true" className="text-border-strong">
-                  ·
-                </span>
-              </>
-            )}
-            <span>{formatFcfa(HOURLY_RATE_FCFA)} / heure</span>
-            <span aria-hidden="true" className="text-border-strong">
-              ·
-            </span>
-            <span>Acompte {DEPOSIT_PERCENTAGE} %</span>
-            <span aria-hidden="true" className="text-border-strong">
-              ·
-            </span>
-            <span>Sans inscription</span>
-          </div>
-        </motion.div>
+              </h1>
 
-        {/* Dynamic Interactive Media Stage */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-          className="md:col-span-6"
-          onMouseEnter={() => setAutoPlay(false)}
-          onMouseLeave={() => setAutoPlay(true)}
-        >
-          <div className="relative overflow-hidden rounded-2xl border border-[#16231b]/15 bg-[#16231b] shadow-lg">
-            <div className="relative aspect-[4/3] w-full bg-[#16231b]">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentScene.id}
-                  initial={{ opacity: 0, scale: 1.03 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute inset-0"
+              {/* Supporting Copy */}
+              <p className="mt-4 max-w-lg font-body text-sm sm:text-base leading-relaxed text-white/85">
+                Trouve et réserve les meilleurs terrains de football près de
+                chez toi. Choisis ton créneau, invite ton équipe et profite du
+                jeu.
+              </p>
+
+              {/* CTAs + Avatars Row */}
+              <div className="mt-7 flex flex-wrap items-center gap-4">
+                <Link
+                  href="/reserver"
+                  className="group min-h-[48px] rounded-full bg-white hover:bg-[#F8FAF7] pl-5 pr-2 py-1.5 font-hero text-sm sm:text-base font-extrabold text-[#123D2B] inline-flex items-center gap-3 shadow-md transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#32CD75] whitespace-nowrap shrink-0"
                 >
-                  <Image
-                    src={currentScene.image}
-                    alt={currentScene.alt}
-                    fill
-                    priority
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    referrerPolicy="no-referrer"
-                    className="object-cover"
-                  />
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Legibility scrim */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#16231b]/90 via-[#16231b]/45 to-transparent"
-              />
-
-              {/* Pitch orange architectural corner line */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute top-0 left-0 right-0 h-1 bg-[#e8590c]"
-              />
-
-              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 text-[#f8f7f2]">
-                <p className="font-display text-xl sm:text-2xl font-bold leading-tight">
-                  {currentScene.captionTitle}
-                </p>
-                <p className="mt-0.5 text-xs sm:text-sm text-[#f8f7f2]/85">
-                  {currentScene.captionSubtitle}
-                </p>
-              </div>
-            </div>
-
-            {/* Interactive scene selector tabs */}
-            <div
-              role="tablist"
-              aria-label="Vues du terrain"
-              className="grid grid-cols-3 border-t border-white/10 bg-[#16231b]"
-            >
-              {HERO_SCENES.map((scene, index) => {
-                const isSelected = index === activeIndex;
-                return (
-                  <button
-                    key={scene.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isSelected}
-                    onClick={() => {
-                      setAutoPlay(false);
-                      setActiveIndex(index);
-                    }}
-                    className={`relative min-h-[46px] px-2 py-2.5 text-xs sm:text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#e8590c] cursor-pointer ${
-                      isSelected
-                        ? 'text-white bg-white/10'
-                        : 'text-[#f8f7f2]/70 hover:text-white hover:bg-white/5'
-                    }`}
+                  <span>Trouver un terrain</span>
+                  <span
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#123D2B] text-white transition-transform duration-200 group-hover:translate-x-0.5"
+                    aria-hidden="true"
                   >
-                    <span>{scene.tabLabel}</span>
-                    {isSelected && (
-                      <motion.span
-                        layoutId="hero-scene-indicator"
-                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-x-3 bottom-0 h-0.5 bg-[#e8590c]"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </span>
+                </Link>
+
+                <a
+                  href="#comment-ca-marche"
+                  className="min-h-[48px] px-4 py-2 rounded-full border border-white/25 bg-white/10 hover:bg-white/18 backdrop-blur-sm font-body text-sm font-semibold text-white inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#32CD75] whitespace-nowrap shrink-0"
+                >
+                  Comment ça marche
+                </a>
+              </div>
+
+              {/* Trust Indicator with Player Avatars */}
+              <div className="mt-6 flex flex-wrap items-center gap-3.5">
+                <div className="flex items-center -space-x-2.5 shrink-0">
+                  <div className="relative h-9 w-9 overflow-hidden rounded-full ring-2 ring-[#123D2B] bg-[#123D2B]">
+                    <Image
+                      src={playerAvatarOneImg}
+                      alt="Joueur de football à Cotonou"
+                      fill
+                      sizes="36px"
+                      referrerPolicy="no-referrer"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="relative h-9 w-9 overflow-hidden rounded-full ring-2 ring-[#123D2B] bg-[#123D2B]">
+                    <Image
+                      src={playerAvatarTwoImg}
+                      alt="Joueuse de football après un match"
+                      fill
+                      sizes="36px"
+                      referrerPolicy="no-referrer"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="relative h-9 w-9 overflow-hidden rounded-full ring-2 ring-[#123D2B] bg-[#123D2B]">
+                    <Image
+                      src={heroNightMatchImg}
+                      alt="Match sur terrain synthétique au Bénin"
+                      fill
+                      sizes="36px"
+                      referrerPolicy="no-referrer"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="font-body text-sm font-semibold text-white">
+                    Rejoins les passionnés de football
+                  </p>
+                  <p className="text-xs text-white/75 tabular-nums">
+                    Cotonou, Bénin · {formatFcfa(HOURLY_RATE_FCFA)} / 1h
+                    {typeof availableTodayCount === 'number' &&
+                    availableTodayCount > 0
+                      ? ` · ${availableTodayCount} créneau${availableTodayCount > 1 ? 'x' : ''} libre${availableTodayCount > 1 ? 's' : ''} aujourd’hui`
+                      : ''}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* RIGHT COLUMN: Two-Tone Floating Glass Booking Card (Inspired by Reference UI) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-6 flex lg:justify-end"
+            >
+              <form
+                onSubmit={handleSearch}
+                aria-label="Recherche rapide de terrain"
+                className="w-full lg:max-w-[460px] overflow-hidden rounded-2xl border border-white/25 shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
+              >
+                {/* Solid Light Header Strip (mirrors reference card top bar) */}
+                <div className="bg-white px-4 py-3 sm:px-5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-1.5 text-sm font-bold text-[#17231D]">
+                    <MapPin
+                      className="w-4 h-4 text-[#123D2B] shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>Cotonou, Bénin</span>
+                  </div>
+                  <span className="text-xs font-bold text-[#123D2B] tabular-nums">
+                    {formatFcfa(HOURLY_RATE_FCFA)} / 1h · 24h/24
+                  </span>
+                </div>
+
+                {/* Frosted Dark Turf Glass Body */}
+                <div className="bg-[#0E2C1F]/78 backdrop-blur-xl p-4 sm:p-5 text-white space-y-3.5">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="hero-date-select"
+                        className="block text-[11px] font-semibold uppercase tracking-wider text-white/75 mb-1"
+                      >
+                        Date
+                      </label>
+                      <div className="relative">
+                        <Calendar
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#32CD75]"
+                          aria-hidden="true"
+                        />
+                        <select
+                          id="hero-date-select"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="w-full min-h-[44px] pl-9 pr-3 rounded-xl bg-white/12 border border-white/20 text-sm font-semibold text-white focus:outline-none focus:border-[#32CD75] focus-visible:ring-2 focus-visible:ring-[#32CD75] cursor-pointer"
+                        >
+                          {days.map((day, idx) => (
+                            <option
+                              key={day.dateStr}
+                              value={day.dateStr}
+                              className="bg-[#123D2B] text-white"
+                            >
+                              {idx === 0
+                                ? `Aujourd’hui · ${day.dayNumber} ${day.monthShort}`
+                                : idx === 1
+                                  ? `Demain · ${day.dayNumber} ${day.monthShort}`
+                                  : `${day.weekdayShort} ${day.dayNumber} ${day.monthShort}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="hero-hour-select"
+                        className="block text-[11px] font-semibold uppercase tracking-wider text-white/75 mb-1"
+                      >
+                        Heure
+                      </label>
+                      <div className="relative">
+                        <Clock
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#32CD75]"
+                          aria-hidden="true"
+                        />
+                        <select
+                          id="hero-hour-select"
+                          value={selectedHour}
+                          onChange={(e) => setSelectedHour(Number(e.target.value))}
+                          className="w-full min-h-[44px] pl-9 pr-3 rounded-xl bg-white/12 border border-white/20 text-sm font-semibold text-white tabular-nums focus:outline-none focus:border-[#32CD75] focus-visible:ring-2 focus-visible:ring-[#32CD75] cursor-pointer"
+                        >
+                          {TIME_SLOTS.map((slot) => (
+                            <option
+                              key={slot.hour}
+                              value={slot.hour}
+                              className="bg-[#123D2B] text-white"
+                            >
+                              {slot.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Format selector + Search CTA */}
+                  <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-semibold uppercase tracking-wider text-white/75 mb-1">
+                        Format du terrain
+                      </span>
+                      <div
+                        role="group"
+                        aria-label="Format du terrain"
+                        className="inline-flex w-full sm:w-auto items-center gap-1 p-1 rounded-xl bg-white/10 border border-white/15"
+                      >
+                        {FIELD_FORMATS.map((format) => {
+                          const isActive = selectedFormat === format;
+                          return (
+                            <button
+                              key={format}
+                              type="button"
+                              onClick={() => setSelectedFormat(format)}
+                              aria-pressed={isActive}
+                              className={`flex-1 sm:flex-initial min-h-[38px] px-3 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#32CD75] cursor-pointer ${
+                                isActive
+                                  ? 'bg-white text-[#123D2B] shadow-xs'
+                                  : 'text-white/80 hover:text-white'
+                              }`}
+                            >
+                              {format}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto min-h-[46px] px-5 py-2.5 rounded-xl bg-[#32CD75] hover:bg-[#29B866] active:scale-[0.99] text-[#123D2B] font-hero text-sm sm:text-base font-extrabold inline-flex items-center justify-center gap-2 shadow-sm transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>Rechercher</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
