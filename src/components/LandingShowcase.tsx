@@ -139,7 +139,7 @@ export function LandingShowcase() {
                 href="#tarifs"
                 className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-sm font-bold text-pitch underline underline-offset-4 hover:text-pitch-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
               >
-                <span>Consulter les tarifs jour & nuit</span>
+                <span>Consulter le tarif horaire</span>
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </a>
             </div>

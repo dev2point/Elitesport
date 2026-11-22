@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   pgTable,
   text,
@@ -38,7 +39,7 @@ export const bookings = pgTable('bookings', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .notNull()
     .defaultNow(),
-});
+}).enableRLS();
 
 export type BookingRow = typeof bookings.$inferSelect;
 export type NewBookingRow = typeof bookings.$inferInsert;
@@ -59,62 +60,107 @@ export const user = pgTable('user', {
   updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
     .notNull()
     .defaultNow(),
-});
+}).enableRLS();
 
-export const session = pgTable('session', {
-  id: text('id').primaryKey(),
-  expiresAt: timestamp('expiresAt', { withTimezone: true, mode: 'date' }).notNull(),
-  token: text('token').notNull().unique(),
-  createdAt: timestamp('createdAt', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
-  ipAddress: text('ipAddress'),
-  userAgent: text('userAgent'),
-  userId: text('userId')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-});
+export const session = pgTable(
+  'session',
+  {
+    id: text('id').primaryKey(),
+    expiresAt: timestamp('expiresAt', { withTimezone: true, mode: 'date' }).notNull(),
+    token: text('token').notNull().unique(),
+    createdAt: timestamp('createdAt', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    ipAddress: text('ipAddress'),
+    userAgent: text('userAgent'),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (table) => [index('session_userId_idx').on(table.userId)]
+).enableRLS();
 
-export const account = pgTable('account', {
-  id: text('id').primaryKey(),
-  accountId: text('accountId').notNull(),
-  providerId: text('providerId').notNull(),
-  userId: text('userId')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  accessToken: text('accessToken'),
-  refreshToken: text('refreshToken'),
-  idToken: text('idToken'),
-  accessTokenExpiresAt: timestamp('accessTokenExpiresAt', {
-    withTimezone: true,
-    mode: 'date',
-  }),
-  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt', {
-    withTimezone: true,
-    mode: 'date',
-  }),
-  scope: text('scope'),
-  password: text('password'),
-  createdAt: timestamp('createdAt', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
-});
+export const account = pgTable(
+  'account',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('accountId').notNull(),
+    providerId: text('providerId').notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: text('accessToken'),
+    refreshToken: text('refreshToken'),
+    idToken: text('idToken'),
+    accessTokenExpiresAt: timestamp('accessTokenExpiresAt', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    scope: text('scope'),
+    password: text('password'),
+    createdAt: timestamp('createdAt', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('account_userId_idx').on(table.userId)]
+).enableRLS();
 
-export const verification = pgTable('verification', {
-  id: text('id').primaryKey(),
-  identifier: text('identifier').notNull(),
-  value: text('value').notNull(),
-  expiresAt: timestamp('expiresAt', { withTimezone: true, mode: 'date' }).notNull(),
-  createdAt: timestamp('createdAt', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
-});
+export const verification = pgTable(
+  'verification',
+  {
+    id: text('id').primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expiresAt', { withTimezone: true, mode: 'date' }).notNull(),
+    createdAt: timestamp('createdAt', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updatedAt', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('verification_identifier_idx').on(table.identifier)]
+).enableRLS();
+
+export const PAYMENT_STATUSES = ['pending', 'successful', 'failed'] as const;
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+/**
+ * Payment records linked to bookings (verified server-side against FeexPay API).
+ */
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id, { onDelete: 'cascade' }),
+    amountFcfa: integer('amount_fcfa').notNull(),
+    operator: text('operator').notNull(),
+    transactionRef: text('transaction_ref').notNull().unique(),
+    status: text('status', { enum: PAYMENT_STATUSES }).notNull().default('pending'),
+    rawStatus: text('raw_status'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('payments_booking_id_idx').on(table.bookingId)]
+).enableRLS();
+
+export type PaymentRow = typeof payments.$inferSelect;
+export type NewPaymentRow = typeof payments.$inferInsert;
+

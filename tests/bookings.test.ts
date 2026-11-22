@@ -2,10 +2,9 @@ import { describe, expect, it } from 'bun:test';
 import type { Database } from '@/src/db';
 import { createBooking, getDaySlots, isPostgresExclusionError } from '@/src/lib/bookings';
 import {
-  DAY_RATE_FCFA,
   DEPOSIT_PERCENTAGE,
   getSlotPricing,
-  NIGHT_RATE_FCFA,
+  HOURLY_RATE_FCFA,
 } from '@/src/lib/pricing';
 import {
   buildPortoNovoSlotRange,
@@ -15,12 +14,14 @@ import {
 import { createBookingSchema } from '@/src/lib/validations';
 
 describe('Pricing rules', () => {
-  it('applies 5000 FCFA from 06h to 17h and 7500 FCFA from 18h to 05h with 30% integer deposit', () => {
+  it('applies 25000 FCFA per hour 24h/24 with 30% integer deposit (7500 FCFA)', () => {
+    expect(HOURLY_RATE_FCFA).toBe(25000);
     for (let h = 0; h < 24; h++) {
       const p = getSlotPricing(h);
-      const expectedPrice = h >= 6 && h <= 17 ? DAY_RATE_FCFA : NIGHT_RATE_FCFA;
-      expect(p.priceFcfa).toBe(expectedPrice);
-      expect(p.depositFcfa).toBe(Math.round((expectedPrice * DEPOSIT_PERCENTAGE) / 100));
+      expect(p.priceFcfa).toBe(25000);
+      expect(p.depositFcfa).toBe(Math.round((25000 * DEPOSIT_PERCENTAGE) / 100));
+      expect(p.depositFcfa).toBe(7500);
+      expect(p.remainingFcfa).toBe(17500);
       expect(Number.isInteger(p.priceFcfa)).toBe(true);
       expect(Number.isInteger(p.depositFcfa)).toBe(true);
     }

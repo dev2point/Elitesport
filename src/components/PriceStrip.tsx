@@ -4,9 +4,8 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowRight, Moon, Sun } from 'lucide-react';
 import {
-  DAY_RATE_FCFA,
   DEPOSIT_PERCENTAGE,
-  NIGHT_RATE_FCFA,
+  HOURLY_RATE_FCFA,
   PENDING_HOLD_MINUTES,
   formatFcfa,
   getSlotPricing,
@@ -18,10 +17,10 @@ const nightPricing = getSlotPricing(20);
 const TARIFF_TIERS = [
   {
     id: 'day',
-    title: 'Tarif Jour',
+    title: 'Sessions Journée',
     hours: '06h00 – 17h59',
     icon: Sun,
-    rate: DAY_RATE_FCFA,
+    rate: HOURLY_RATE_FCFA,
     deposit: dayPricing.depositFcfa,
     remaining: dayPricing.remainingFcfa,
     description:
@@ -30,14 +29,14 @@ const TARIFF_TIERS = [
   },
   {
     id: 'night',
-    title: 'Tarif Nuit & Projecteurs',
+    title: 'Sessions Nuit & Projecteurs',
     hours: '18h00 – 05h59',
     icon: Moon,
-    rate: NIGHT_RATE_FCFA,
+    rate: HOURLY_RATE_FCFA,
     deposit: nightPricing.depositFcfa,
     remaining: nightPricing.remainingFcfa,
     description:
-      'Éclairage LED complet inclus pour jouer au frais après le travail ou tard dans la nuit.',
+      'Éclairage LED complet inclus sans majoration de prix pour jouer au frais après le travail ou tard dans la nuit.',
     featured: true,
   },
 ] as const;
@@ -59,17 +58,17 @@ export function PriceStrip() {
         >
           <div>
             <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-line-strong">
-              Grille tarifaire transparente
+              Tarif unique transparent
             </p>
             <h2
               id="price-strip-title"
               className="mt-2 font-display text-3xl font-bold leading-none text-ink sm:text-4xl"
             >
-              Un tarif clair par heure de jeu.
+              {formatFcfa(HOURLY_RATE_FCFA)} par heure, jour et nuit.
             </h2>
           </div>
           <p className="text-sm text-text-secondary tabular-nums">
-            Acompte de {DEPOSIT_PERCENTAGE} % sur WhatsApp · Blocage{' '}
+            Acompte de {DEPOSIT_PERCENTAGE} % ({formatFcfa(dayPricing.depositFcfa)}) · Blocage{' '}
             {PENDING_HOLD_MINUTES} min
           </p>
         </motion.div>

@@ -3,6 +3,11 @@ import { LegalPageShell } from '@/src/components/LegalPageShell';
 import { LegalSection } from '@/src/components/LegalSection';
 import { PlaceholderField } from '@/src/components/PlaceholderField';
 import type { LegalTocItem } from '@/src/components/LegalToc';
+import {
+  DEPOSIT_PERCENTAGE,
+  formatFcfa,
+  HOURLY_RATE_FCFA,
+} from '@/src/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Conditions générales de vente — Élite Sport Godomey',
@@ -41,8 +46,8 @@ export default function CguPage() {
 
       <LegalSection id="tarifs" title="Tarifs et acompte">
         <p>
-          Le tarif est de 5 000 FCFA de 06h à 17h et de 7 500 FCFA de 18h à 05h.
-          L’acompte est de 30 %.
+          Le tarif unique est de {formatFcfa(HOURLY_RATE_FCFA)} par heure, 24h/24.
+          L’acompte est de {DEPOSIT_PERCENTAGE} %.
         </p>
         <p>
           <PlaceholderField field="modalités de paiement de l’acompte" />

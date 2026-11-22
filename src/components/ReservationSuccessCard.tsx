@@ -16,11 +16,15 @@ import {
   buildBookingIcsDataUri,
   buildGoogleCalendarUrl,
 } from '@/src/lib/calendar';
+import type { FeexPayWidgetConfig } from '@/src/lib/feexpay';
 import { formatFcfa } from '@/src/lib/pricing';
+import { FeexPayDepositWidget } from './FeexPayDepositWidget';
 
 interface ReservationSuccessCardProps {
   booking: BookingDetails;
   managerWhatsapp: string;
+  feexPayConfig: FeexPayWidgetConfig;
+  returnReference?: string;
 }
 
 function formatCountdown(expiresAtIso: string, nowMs: number): string {
@@ -59,9 +63,15 @@ function buildWhatsappHref(
 export function ReservationSuccessCard({
   booking,
   managerWhatsapp,
+  feexPayConfig,
+  returnReference,
 }: ReservationSuccessCardProps) {
   const router = useRouter();
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const [paymentFailedMsg, setPaymentFailedMsg] = useState<string | null>(null);
+  const [onlinePayAvailable, setOnlinePayAvailable] = useState<boolean>(
+    feexPayConfig.isConfigured
+  );
 
   const isPending = booking.status === 'pending';
   const isConfirmed = booking.status === 'confirmed';
@@ -81,6 +91,31 @@ export function ReservationSuccessCard({
       clearInterval(poll);
     };
   }, [isPending, router]);
+
+  useEffect(() => {
+    if (!isPending || !returnReference) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/payments/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            reference: returnReference,
+          }),
+        });
+        if (!cancelled && res.ok) {
+          router.refresh();
+        }
+      } catch {
+        // User can retry or use WhatsApp Plan B
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [booking.id, isPending, returnReference, router]);
 
   const calendarInput = {
     id: booking.id,
@@ -210,15 +245,44 @@ export function ReservationSuccessCard({
 
       {/* Primary Actions */}
       <div className="mt-5 space-y-2.5">
+        {isPending && (
+          <FeexPayDepositWidget
+            booking={{
+              id: booking.id,
+              reference: booking.reference,
+              teamName: booking.teamName,
+              phone: booking.phone,
+              depositFcfa: booking.depositFcfa,
+            }}
+            feexPayConfig={feexPayConfig}
+            onAvailabilityChange={setOnlinePayAvailable}
+            onVerifiedConfirmed={() => {
+              setPaymentFailedMsg(null);
+              router.refresh();
+            }}
+            onPaymentFailed={(msg) => setPaymentFailedMsg(msg)}
+          />
+        )}
+
         {isPending && whatsappHref && (
           <a
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full min-h-[50px] px-4 py-3 rounded-xl bg-[#1f5d3a] hover:bg-[#17482c] text-white font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors"
+            className={`w-full min-h-[50px] px-4 py-3 rounded-xl font-display text-lg font-bold tracking-wide flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8590c] transition-colors ${
+              paymentFailedMsg
+                ? 'bg-[#c94705] hover:bg-[#b23d03] text-white'
+                : 'bg-[#1f5d3a] hover:bg-[#17482c] text-white'
+            }`}
           >
             <MessageCircle className="w-5 h-5 shrink-0" aria-hidden="true" />
-            <span>Confirmer sur WhatsApp</span>
+            <span>
+              {paymentFailedMsg
+                ? 'Confirmer plutôt sur WhatsApp (Plan B)'
+                : onlinePayAvailable
+                  ? 'Confirmer sur WhatsApp (Plan B)'
+                  : 'Confirmer sur WhatsApp'}
+            </span>
           </a>
         )}
 

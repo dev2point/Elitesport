@@ -6,18 +6,27 @@ import { SkipLink } from '@/src/components/SkipLink';
 import { ReservationSuccessCard } from '@/src/components/ReservationSuccessCard';
 import { isDatabaseConfigured } from '@/src/db';
 import { getBookingById } from '@/src/lib/bookings';
+import { resolveFeexPayWidgetConfig } from '@/src/lib/feexpay';
 
 export const dynamic = 'force-dynamic';
 
 interface ReservationPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ ref?: string }>;
 }
 
-export default async function ReservationPage({ params }: ReservationPageProps) {
+export default async function ReservationPage({
+  params,
+  searchParams,
+}: ReservationPageProps) {
   const { id } = await params;
+  const resolvedQuery = await searchParams;
+  const returnRef =
+    typeof resolvedQuery?.ref === 'string' ? resolvedQuery.ref.trim() : undefined;
 
   const booking = isDatabaseConfigured() ? await getBookingById(id) : null;
   const managerWhatsapp = process.env.NEXT_PUBLIC_MANAGER_WHATSAPP ?? '';
+  const feexPayConfig = await resolveFeexPayWidgetConfig();
 
   return (
     <div className="min-h-screen bg-[#f8f7f2] text-[#16231b]">
@@ -40,6 +49,8 @@ export default async function ReservationPage({ params }: ReservationPageProps) 
           <ReservationSuccessCard
             booking={booking}
             managerWhatsapp={managerWhatsapp}
+            feexPayConfig={feexPayConfig}
+            returnReference={returnRef}
           />
         ) : (
           <section className="bg-white border border-[#16231b]/15 rounded-2xl p-6 text-center">

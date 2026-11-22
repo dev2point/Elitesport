@@ -9,8 +9,8 @@ import heroTwilightImg from '@/src/assets/images/hero_pitch_twilight_17952681928
 import heroNightMatchImg from '@/src/assets/images/hero_soccer_night_1795268211358.jpg';
 import heroTurfDetailImg from '@/src/assets/images/hero_turf_detail_1795268193867.jpg';
 import {
-  DAY_RATE_FCFA,
   DEPOSIT_PERCENTAGE,
+  HOURLY_RATE_FCFA,
   PENDING_HOLD_MINUTES,
   formatFcfa,
 } from '@/src/lib/pricing';
@@ -140,7 +140,7 @@ export function LandingHero({ availableTodayCount }: LandingHeroProps) {
                 </span>
               </>
             )}
-            <span>Dès {formatFcfa(DAY_RATE_FCFA)}/h</span>
+            <span>{formatFcfa(HOURLY_RATE_FCFA)} / heure</span>
             <span aria-hidden="true" className="text-border-strong">
               ·
             </span>

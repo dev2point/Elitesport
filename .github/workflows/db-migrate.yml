@@ -1,0 +1,142 @@
+name: Database Migrations
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "src/db/schema.ts"
+      - "drizzle/**"
+      - "sql/**"
+      - "supabase/**"
+      - "drizzle.config.ts"
+      - "scripts/migrate.mjs"
+      - ".github/workflows/db-migrate.yml"
+  pull_request:
+    paths:
+      - "src/db/schema.ts"
+      - "drizzle/**"
+      - "sql/**"
+      - "supabase/**"
+      - "drizzle.config.ts"
+      - "scripts/migrate.mjs"
+      - ".github/workflows/db-migrate.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Drizzle Schema
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check Drizzle migration journal consistency
+        run: npx drizzle-kit check
+
+      - name: Check schema tests
+        run: bun test tests/
+
+      - name: Verify Drizzle migration sync on PR
+        if: github.event_name == 'pull_request'
+        run: |
+          npx drizzle-kit generate --name pr_schema_check
+          if [ -n "$(git status --porcelain drizzle/)" ]; then
+            echo "::notice title=Migration Drizzle en attente::src/db/schema.ts contient des changements non générés dans drizzle/. Ils seront générés automatiquement au merge sur main (ou lancez 'npm run db:generate')."
+          else
+            echo "Drizzle migrations are up to date with src/db/schema.ts."
+          fi
+
+  migrate:
+    name: Apply Supabase Migrations
+    needs: validate
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify database connection secret is configured
+        env:
+          HAS_DIRECT_URL: ${{ secrets.DIRECT_URL != '' }}
+          HAS_DATABASE_URL: ${{ secrets.DATABASE_URL != '' }}
+        run: |
+          if [ "$HAS_DIRECT_URL" != "true" ] && [ "$HAS_DATABASE_URL" != "true" ]; then
+            echo "::error::Ajoutez le secret DATABASE_URL (ou DIRECT_URL) dans Settings -> Secrets and variables -> Actions sur GitHub."
+            exit 1
+          fi
+
+      - name: Generate pending Drizzle SQL migration if schema changed
+        id: generate
+        run: |
+          npx drizzle-kit generate --name auto_schema_sync
+          if [ -n "$(git status --porcelain drizzle/)" ]; then
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+            echo "New Drizzle migration generated from src/db/schema.ts:"
+            git status --short drizzle/
+          else
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            echo "No ungenerated schema changes."
+          fi
+
+      - name: Execute SQL & Drizzle migrations on Supabase
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: node scripts/migrate.mjs
+
+      - name: Commit auto-generated Drizzle snapshot
+        if: steps.generate.outputs.generated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle/
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(db): sync drizzle migration [skip ci]"
+            git push || echo "::warning::Impossible de pousser automatiquement le snapshot drizzle/ (vérifiez les permissions de branche). Exécutez 'npm run db:generate' localement."
+          fi
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "### Migrations Base de Données — Élite Sport Godomey"
+            echo ""
+            echo "- Branche : \`${{ github.ref_name }}\`"
+            echo "- Nouvelle migration Drizzle auto-générée : \`${{ steps.generate.outputs.generated || 'false' }}\`"
+            echo "- Migrations SQL (\`sql/*.sql\`, \`supabase/better_auth_tables.sql\`), Drizzle (\`drizzle/*.sql\`) et vérification RLS exécutées."
+          } >> "$GITHUB_STEP_SUMMARY"
