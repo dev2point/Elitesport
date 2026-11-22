@@ -36,6 +36,7 @@
   html {
     background-color: #F8FAF7;
     color: #17231D;
+    scroll-padding-top: 96px;
     -webkit-tap-highlight-color: transparent;
   }
 

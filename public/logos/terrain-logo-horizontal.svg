@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 96" width="380" height="96" role="img" aria-labelledby="terrain-h-title terrain-h-desc">
+  <title id="terrain-h-title">TERRAIN — Logo horizontal</title>
+  <desc id="terrain-h-desc">Logo horizontal de TERRAIN avec emblème de terrain de football vert et typographie sombre sur fond clair.</desc>
+  <defs>
+    <style>
+      .badge { fill: #123D2B; }
+      .lines { fill: none; stroke: #F8FAF7; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+      .accent-stroke { fill: none; stroke: #32CD75; stroke-width: 7; }
+      .accent-fill { fill: #32CD75; }
+      .wordmark { font-family: 'Plus Jakarta Sans', 'Manrope', system-ui, -apple-system, sans-serif; font-size: 36px; font-weight: 800; letter-spacing: -0.03em; fill: #123D2B; }
+      .tagline { font-family: 'Manrope', system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; fill: #3C4A41; }
+    </style>
+  </defs>
+  <g id="icon" transform="translate(8 8) scale(0.625)">
+    <rect class="badge" x="4" y="4" width="120" height="120" rx="28" />
+    <rect class="lines" x="24" y="24" width="80" height="80" rx="14" />
+    <path class="lines" d="M46 24 V38 H82 V24" />
+    <path class="lines" d="M46 104 V90 H82 V104" />
+    <line class="lines" x1="24" y1="64" x2="46" y2="64" />
+    <line class="lines" x1="82" y1="64" x2="104" y2="64" />
+    <circle class="accent-stroke" cx="64" cy="64" r="18" />
+    <circle class="accent-fill" cx="64" cy="64" r="6.5" />
+  </g>
+  <g id="wordmark">
+    <text x="104" y="54" class="wordmark">TERRAIN</text>
+    <text x="106" y="74" class="tagline">COTONOU · BÉNIN</text>
+  </g>
+</svg>

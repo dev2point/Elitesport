@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="terrain-mono-title terrain-mono-desc">
+  <title id="terrain-mono-title">TERRAIN — Emblème monochrome</title>
+  <desc id="terrain-mono-desc">Version monochrome transparente de l’emblème de terrain de football TERRAIN.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" color="#123D2B">
+    <rect x="14" y="14" width="100" height="100" rx="22" />
+    <path d="M44 14 V32 H84 V14" />
+    <path d="M44 114 V96 H84 V114" />
+    <line x1="14" y1="64" x2="44" y2="64" />
+    <line x1="84" y1="64" x2="114" y2="64" />
+    <circle cx="64" cy="64" r="20" />
+    <circle cx="64" cy="64" r="6.5" fill="currentColor" stroke="none" />
+  </g>
+</svg>

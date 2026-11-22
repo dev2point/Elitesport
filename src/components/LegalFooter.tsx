@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MapPin, Clock } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { PWAInstallButton } from './PWAInstallButton';
 
 const legalLinks = [
@@ -15,9 +16,12 @@ export function LegalFooter() {
       <div className="mx-auto max-w-5xl px-3.5 py-10 sm:px-4 sm:py-12">
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between md:gap-12">
           <div className="space-y-2.5">
-            <p className="font-display text-xl font-bold text-ink">
-              Élite Sport Godomey
-            </p>
+            <div className="flex items-center gap-2.5">
+              <BrandLogo variant="solid" size="sm" />
+              <span className="text-xs font-semibold text-text-secondary">
+                · Élite Sport Godomey
+              </span>
+            </div>
             <p className="flex items-center gap-2 text-sm text-text-secondary">
               <MapPin className="h-4 w-4 shrink-0 text-line-strong" aria-hidden="true" />
               <span>Godomey, Cotonou, Bénin</span>

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavLinkItem {
@@ -27,8 +28,18 @@ interface NavbarProps {
 export function Navbar({ variant = 'solid' }: NavbarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const isHero = variant === 'hero';
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   function isActiveLink(item: NavLinkItem): boolean {
     if (item.href === '/') {
@@ -41,31 +52,37 @@ export function Navbar({ variant = 'solid' }: NavbarProps) {
   }
 
   return (
-    <header
-      className={
-        isHero
-          ? 'relative z-20'
-          : 'sticky top-0 z-30 border-b border-[#123D2B]/10 bg-[#F8FAF7]/88 backdrop-blur-md'
-      }
-    >
-      <div
+    <>
+      <header
         className={
           isHero
-            ? 'flex h-14 sm:h-16 items-center justify-between gap-4 rounded-full border border-white/18 bg-[#123D2B]/40 px-3.5 sm:px-5 backdrop-blur-md md:gap-8'
-            : 'mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:h-[72px] sm:px-6 lg:px-8 md:gap-8'
+            ? isScrolled
+              ? 'fixed top-0 inset-x-0 z-40 pt-0 px-0 pointer-events-auto border-b border-white/15 bg-[#123D2B] shadow-[0_10px_30px_rgba(10,33,22,0.28)] transition-colors duration-200'
+              : 'fixed top-0 inset-x-0 z-40 pt-3 sm:pt-4 px-3 sm:px-6 lg:px-10 pointer-events-none transition-colors duration-200'
+            : 'fixed top-0 inset-x-0 z-40 border-b border-[#123D2B]/10 bg-[#F8FAF7]/92 backdrop-blur-md shadow-[0_2px_14px_rgba(18,61,43,0.06)]'
         }
       >
-        {/* Zone 1: Brand wordmark */}
+        <div
+          className={
+            isHero
+              ? isScrolled
+                ? 'mx-auto max-w-[1360px] pointer-events-auto flex h-14 sm:h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-10 md:gap-8'
+                : 'mx-auto max-w-[1280px] pointer-events-auto flex h-14 sm:h-16 items-center justify-between gap-4 rounded-full border border-white/18 bg-[#123D2B]/45 px-3.5 sm:px-5 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.14)] md:gap-8'
+              : 'mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:h-[72px] sm:px-6 lg:px-8 md:gap-8'
+          }
+        >
+        {/* Zone 1: Brand mark */}
         <Link
           href="/"
+          aria-label="TERRAIN — Accueil"
           onClick={() => setMobileOpen(false)}
-          className={`inline-flex min-h-[44px] items-center rounded-sm font-hero text-lg sm:text-xl font-extrabold tracking-[-0.03em] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+          className={`inline-flex min-h-[44px] items-center rounded-sm whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 ${
             isHero
-              ? 'text-white focus-visible:outline-[#32CD75]'
-              : 'text-[#123D2B] focus-visible:outline-[#123D2B]'
+              ? 'focus-visible:outline-[#32CD75]'
+              : 'focus-visible:outline-[#123D2B]'
           }`}
         >
-          TERRAIN
+          <BrandLogo variant={variant} showWordmark={false} />
         </Link>
 
         {/* Zone 2: Single-line navigation links */}
@@ -171,7 +188,9 @@ export function Navbar({ variant = 'solid' }: NavbarProps) {
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className={
               isHero
-                ? 'md:hidden mt-2 rounded-2xl border border-white/20 bg-[#123D2B]/95 backdrop-blur-xl p-3 text-white shadow-xl'
+                ? isScrolled
+                  ? 'md:hidden w-full pointer-events-auto border-t border-white/15 bg-[#123D2B] px-3 py-3 text-white shadow-xl'
+                  : 'md:hidden mx-auto max-w-[1280px] pointer-events-auto mt-2 rounded-2xl border border-white/20 bg-[#123D2B]/95 backdrop-blur-xl p-3 text-white shadow-xl'
                 : 'md:hidden overflow-hidden border-t border-[#123D2B]/10 bg-[#F8FAF7]'
             }
           >
@@ -223,6 +242,8 @@ export function Navbar({ variant = 'solid' }: NavbarProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+      </header>
+      {!isHero && <div aria-hidden="true" className="h-16 sm:h-[72px]" />}
+    </>
   );
 }

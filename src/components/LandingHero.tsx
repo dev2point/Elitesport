@@ -58,6 +58,9 @@ export function LandingHero({ days, availableTodayCount }: LandingHeroProps) {
       aria-labelledby="hero-heading"
       className="w-full"
     >
+      {/* Fixed Always-Visible Translucent Glass Navigation Bar */}
+      <Navbar variant="hero" />
+
       {/* Full-Bleed Edge-to-Edge Atmospheric Pitch Canvas */}
       <div className="group/hero relative w-full overflow-hidden bg-[#123D2B]">
         {/* Background Pitch Photography with Subtle Hover Zoom */}
@@ -87,12 +90,9 @@ export function LandingHero({ days, availableTodayCount }: LandingHeroProps) {
         />
 
         {/* Foreground Interactive Content */}
-        <div className="relative z-10 mx-auto flex min-h-[600px] lg:min-h-[680px] w-full max-w-[1360px] flex-col justify-between px-4 pt-4 pb-10 sm:px-6 sm:pt-6 sm:pb-12 lg:px-10 lg:pt-8 lg:pb-14">
-          {/* Top Translucent Glass Navigation Bar */}
-          <Navbar variant="hero" />
-
+        <div className="relative z-10 mx-auto flex min-h-[620px] lg:min-h-[690px] w-full max-w-[1360px] flex-col justify-end px-4 pt-28 pb-10 sm:px-6 sm:pt-32 sm:pb-12 lg:px-10 lg:pt-36 lg:pb-14">
           {/* Main 2-Column Composition inside Hero */}
-          <div className="mt-10 sm:mt-14 lg:mt-16 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end lg:gap-10">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end lg:gap-10">
             {/* LEFT COLUMN: Editorial Headline, Value Prop, CTAs & Avatars */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
