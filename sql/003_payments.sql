@@ -1,4 +1,4 @@
--- Table payments pour le suivi des acomptes FeexPay (MTN MoMo, Moov Money, Carte)
+-- Table payments pour le suivi des paiements plein FeexPay (MTN MoMo, Moov Money, Carte)
 -- RLS activé sans aucune politique : bloque totalement l'accès via l'API publique Supabase (PostgREST),
 -- tout en autorisant les requêtes serveur Drizzle via DATABASE_URL.
 
