@@ -4,15 +4,10 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowRight, Moon, Sun } from 'lucide-react';
 import {
-  DEPOSIT_PERCENTAGE,
   HOURLY_RATE_FCFA,
   PENDING_HOLD_MINUTES,
   formatFcfa,
-  getSlotPricing,
 } from '@/src/lib/pricing';
-
-const dayPricing = getSlotPricing(10);
-const nightPricing = getSlotPricing(20);
 
 const TARIFF_TIERS = [
   {
@@ -21,8 +16,6 @@ const TARIFF_TIERS = [
     hours: '06h00 – 17h59',
     icon: Sun,
     rate: HOURLY_RATE_FCFA,
-    deposit: dayPricing.depositFcfa,
-    remaining: dayPricing.remainingFcfa,
     description:
       'Idéal pour les entraînements matinaux, les matchs entre amis en journée et les fins d’après-midi.',
     featured: false,
@@ -33,8 +26,6 @@ const TARIFF_TIERS = [
     hours: '18h00 – 05h59',
     icon: Moon,
     rate: HOURLY_RATE_FCFA,
-    deposit: nightPricing.depositFcfa,
-    remaining: nightPricing.remainingFcfa,
     description:
       'Éclairage LED complet inclus sans majoration de prix pour jouer au frais après le travail ou tard dans la nuit.',
     featured: true,
@@ -68,8 +59,8 @@ export function PriceStrip() {
             </h2>
           </div>
           <p className="text-sm text-text-secondary tabular-nums">
-            Acompte de {DEPOSIT_PERCENTAGE} % ({formatFcfa(dayPricing.depositFcfa)}) · Blocage{' '}
-            {PENDING_HOLD_MINUTES} min
+            Paiement intégral de {formatFcfa(HOURLY_RATE_FCFA)} avant confirmation ·
+            Blocage {PENDING_HOLD_MINUTES} min
           </p>
         </motion.div>
 
@@ -133,36 +124,6 @@ export function PriceStrip() {
                     {tier.description}
                   </p>
 
-                  <dl
-                    className={`mt-5 pt-4 border-t grid grid-cols-2 gap-3 text-sm tabular-nums ${
-                      tier.featured ? 'border-white/15' : 'border-border-subtle'
-                    }`}
-                  >
-                    <div>
-                      <dt
-                        className={
-                          tier.featured ? 'text-[#f8f7f2]/75' : 'text-text-tertiary'
-                        }
-                      >
-                        Acompte ({DEPOSIT_PERCENTAGE} %)
-                      </dt>
-                      <dd className="mt-0.5 font-bold">
-                        {formatFcfa(tier.deposit)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt
-                        className={
-                          tier.featured ? 'text-[#f8f7f2]/75' : 'text-text-tertiary'
-                        }
-                      >
-                        Solde au terrain
-                      </dt>
-                      <dd className="mt-0.5 font-bold">
-                        {formatFcfa(tier.remaining)}
-                      </dd>
-                    </div>
-                  </dl>
                 </div>
 
                 <Link

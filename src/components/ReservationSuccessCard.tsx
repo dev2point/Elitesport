@@ -20,7 +20,7 @@ import {
 import type { FeexPayWidgetConfig } from '@/src/lib/feexpay';
 import { formatFcfa } from '@/src/lib/pricing';
 import { BookingQrCode } from './BookingQrCode';
-import { FeexPayDepositWidget } from './FeexPayDepositWidget';
+import { FeexPayPaymentWidget } from './FeexPayPaymentWidget';
 
 interface ReservationSuccessCardProps {
   booking: BookingDetails;
@@ -50,13 +50,13 @@ function buildWhatsappHref(
 
   const message = [
     'Bonjour Élite Sport Godomey,',
-    'Je souhaite confirmer ma réservation par acompte :',
+    'Je souhaite confirmer ma réservation par paiement intégral :',
     `- Référence : ${booking.reference}`,
     `- Équipe : ${booking.teamName}`,
     `- Date : ${booking.dateLabel}`,
     `- Créneau : ${booking.timeLabel}`,
     `- Tarif total : ${formatFcfa(booking.priceFcfa)}`,
-    `- Acompte (30 %) : ${formatFcfa(booking.depositFcfa)}`,
+    `- Montant à payer : ${formatFcfa(booking.priceFcfa)}`,
   ].join('\n');
 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
@@ -126,7 +126,6 @@ export function ReservationSuccessCard({
     startsAtIso: booking.startsAtIso,
     endsAtIso: booking.endsAtIso,
     priceFcfa: booking.priceFcfa,
-    depositFcfa: booking.depositFcfa,
   };
 
   const icsHref = buildBookingIcsDataUri(calendarInput);
@@ -171,8 +170,9 @@ export function ReservationSuccessCard({
             )}
           </div>
           <p className="mt-2 text-sm text-[#16231b]/75">
-            Envoyez l&apos;acompte de 30 % via WhatsApp avant la fin du délai
-            pour valider définitivement votre créneau.
+            Effectuez le paiement intégral de {formatFcfa(booking.priceFcfa)} via
+            Mobile Money ou WhatsApp avant la fin du délai pour valider
+            définitivement votre créneau.
           </p>
         </div>
       ) : (
@@ -232,15 +232,9 @@ export function ReservationSuccessCard({
           </dd>
         </div>
         <div className="py-2.5 flex items-center justify-between gap-4">
-          <dt className="text-[#16231b]/65">Acompte (30 %)</dt>
+          <dt className="text-[#16231b]/65">Montant à payer</dt>
           <dd className="font-bold text-[#1f5d3a] tabular-nums">
-            {formatFcfa(booking.depositFcfa)}
-          </dd>
-        </div>
-        <div className="py-2.5 flex items-center justify-between gap-4">
-          <dt className="text-[#16231b]/65">Solde sur place</dt>
-          <dd className="font-semibold text-[#16231b] tabular-nums">
-            {formatFcfa(booking.remainingFcfa)}
+            {formatFcfa(booking.priceFcfa)}
           </dd>
         </div>
       </dl>
@@ -267,14 +261,14 @@ export function ReservationSuccessCard({
       {/* Primary Actions */}
       <div className="mt-5 space-y-2.5">
         {isPending && (
-          <FeexPayDepositWidget
+          <FeexPayPaymentWidget
             booking={{
               id: booking.id,
               reference: booking.reference,
-              teamName: booking.teamName,
               phone: booking.phone,
-              depositFcfa: booking.depositFcfa,
+              priceFcfa: booking.priceFcfa,
             }}
+            bookingStatus={booking.status}
             feexPayConfig={feexPayConfig}
             onAvailabilityChange={setOnlinePayAvailable}
             onVerifiedConfirmed={() => {

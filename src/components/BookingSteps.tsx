@@ -1,7 +1,11 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { DEPOSIT_PERCENTAGE, PENDING_HOLD_MINUTES } from '@/src/lib/pricing';
+import {
+  HOURLY_RATE_FCFA,
+  PENDING_HOLD_MINUTES,
+  formatFcfa,
+} from '@/src/lib/pricing';
 
 const steps = [
   {
@@ -15,9 +19,8 @@ const steps = [
       'Saisissez le nom de votre équipe et votre téléphone béninois. Le terrain est aussitôt réservé pour vous.',
   },
   {
-    title: `Confirmez par acompte de ${DEPOSIT_PERCENTAGE} %`,
-    detail:
-      'Ouvrez le message WhatsApp prérempli avec votre référence et réglez l’acompte par Mobile Money.',
+    title: 'Payez le montant intégral avant confirmation',
+    detail: `Réglez ${formatFcfa(HOURLY_RATE_FCFA)} par Mobile Money ou WhatsApp. Le créneau n’est confirmé qu’après réception du paiement intégral.`,
   },
 ];
 
