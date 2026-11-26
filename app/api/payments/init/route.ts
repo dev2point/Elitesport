@@ -8,14 +8,31 @@ import {
   expirePendingBookings,
   extractDbErrorDetails,
 } from '@/src/lib/bookings';
-import { initiateFeexPayDeposit } from '@/src/lib/feexpay';
+import { initiateFeexPayPayment } from '@/src/lib/feexpay';
+import { hasSuccessfulFullPayment } from '@/src/lib/payment-ledger';
 import { processVerifiedFeexPayTransaction } from '@/src/lib/payments';
 import { bookingIdSchema, normalizeBeninPhone } from '@/src/lib/validations';
+
+const PAYMENTS_TABLE_MISSING_ERROR =
+  'La table des paiements est absente. Exécutez sql/003_payments.sql dans Supabase.';
+
+const paymentPhoneSchema = z.string().trim().transform((val, ctx) => {
+  const normalized = normalizeBeninPhone(val);
+  if (!normalized) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'Numéro Mobile Money invalide (8 chiffres ou 10 chiffres commençant par 01).',
+    });
+    return z.NEVER;
+  }
+  return normalized;
+});
 
 const initPaymentSchema = z.object({
   bookingId: bookingIdSchema,
   channel: z.enum(['mtn', 'moov', 'celtiis', 'card']),
-  phone: z.string().trim().optional(),
+  phone: paymentPhoneSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -39,12 +56,16 @@ export async function POST(req: NextRequest) {
   const parsed = initPaymentSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { ok: false, error: 'Données de paiement invalides.' },
+      {
+        ok: false,
+        error:
+          parsed.error.issues[0]?.message ?? 'Données de paiement invalides.',
+      },
       { status: 400 }
     );
   }
 
-  const { bookingId, channel, phone } = parsed.data;
+  const { bookingId, channel } = parsed.data;
   const db = getDb();
   const now = new Date();
 
@@ -55,7 +76,7 @@ export async function POST(req: NextRequest) {
       .select({
         id: bookings.id,
         status: bookings.status,
-        depositFcfa: bookings.depositFcfa,
+        priceFcfa: bookings.priceFcfa,
         phone: bookings.phone,
       })
       .from(bookings)
@@ -75,6 +96,7 @@ export async function POST(req: NextRequest) {
           ok: true,
           status: 'successful',
           bookingId: booking.id,
+          amountFcfa: booking.priceFcfa,
         },
         { status: 200 }
       );
@@ -91,28 +113,54 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let alreadyPaid: boolean;
+    try {
+      alreadyPaid = await hasSuccessfulFullPayment(db, booking.id, booking.priceFcfa);
+    } catch (ledgerError) {
+      const details = extractDbErrorDetails(ledgerError);
+      if (details.code === '42P01') {
+        return NextResponse.json(
+          { ok: false, error: PAYMENTS_TABLE_MISSING_ERROR },
+          { status: 503 }
+        );
+      }
+      throw ledgerError;
+    }
+
+    if (alreadyPaid) {
+      return NextResponse.json(
+        {
+          ok: true,
+          status: 'successful',
+          bookingId: booking.id,
+          amountFcfa: booking.priceFcfa,
+        },
+        { status: 200 }
+      );
+    }
+
     let resolvedPhone = booking.phone;
     if (channel !== 'card') {
-      const phoneInput = phone && phone.trim().length > 0 ? phone : booking.phone;
-      const normalized = normalizeBeninPhone(phoneInput);
-      if (!normalized) {
+      const phoneCheck = paymentPhoneSchema.safeParse(parsed.data.phone ?? booking.phone);
+      if (!phoneCheck.success) {
         return NextResponse.json(
           {
             ok: false,
             error:
+              phoneCheck.error.issues[0]?.message ??
               'Numéro Mobile Money invalide (8 chiffres ou 10 chiffres commençant par 01).',
           },
           { status: 400 }
         );
       }
-      resolvedPhone = normalized;
+      resolvedPhone = phoneCheck.data;
     }
 
     const bookingReference = buildBookingReference(booking.id);
-    const initResult = await initiateFeexPayDeposit({
+    const initResult = await initiateFeexPayPayment({
       bookingId: booking.id,
       bookingReference,
-      amountFcfa: booking.depositFcfa,
+      amountFcfa: booking.priceFcfa,
       phone: resolvedPhone,
       channel,
     });
@@ -129,13 +177,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Record initial payment intent for idempotency & audit (fail-soft if migration 003 hasn't run yet)
+    // Record the full-payment intent for idempotency & audit.
     try {
       await db
         .insert(payments)
         .values({
           bookingId: booking.id,
-          amountFcfa: booking.depositFcfa,
+          amountFcfa: booking.priceFcfa,
           operator: initResult.operator,
           transactionRef: initResult.reference,
           status: 'pending',
@@ -146,16 +194,16 @@ export async function POST(req: NextRequest) {
     } catch (auditError) {
       const details = extractDbErrorDetails(auditError);
       if (details.code === '42P01') {
-        console.warn(
-          'FeexPay payment audit skipped: table "payments" missing. Run sql/003_payments.sql in Supabase.'
-        );
-      } else {
-        console.warn(
-          'FeexPay payment audit insert skipped:',
-          details.code ?? 'UNKNOWN',
-          details.message
+        return NextResponse.json(
+          { ok: false, error: PAYMENTS_TABLE_MISSING_ERROR },
+          { status: 503 }
         );
       }
+      console.warn(
+        'FeexPay payment audit insert skipped:',
+        details.code ?? 'UNKNOWN',
+        details.message
+      );
     }
 
     if (initResult.paymentUrl) {
@@ -165,6 +213,7 @@ export async function POST(req: NextRequest) {
           status: 'redirect',
           reference: initResult.reference,
           paymentUrl: initResult.paymentUrl,
+          amountFcfa: booking.priceFcfa,
         },
         { status: 200 }
       );
@@ -182,6 +231,7 @@ export async function POST(req: NextRequest) {
             status: 'successful',
             reference: initResult.reference,
             bookingId: booking.id,
+            amountFcfa: verified.amountFcfa,
           },
           { status: 200 }
         );
@@ -204,11 +254,18 @@ export async function POST(req: NextRequest) {
         ok: true,
         status: 'pending',
         reference: initResult.reference,
+        amountFcfa: booking.priceFcfa,
       },
       { status: 200 }
     );
   } catch (error) {
     const details = extractDbErrorDetails(error);
+    if (details.code === '42P01') {
+      return NextResponse.json(
+        { ok: false, error: PAYMENTS_TABLE_MISSING_ERROR },
+        { status: 503 }
+      );
+    }
     console.warn(
       'Payment init route failed:',
       details.code ?? 'UNKNOWN',
