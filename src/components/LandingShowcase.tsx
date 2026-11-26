@@ -6,7 +6,11 @@ import { motion } from 'motion/react';
 import { ArrowRight, MessageCircle, ShieldCheck, Smartphone, Zap } from 'lucide-react';
 import heroNightMatchImg from '@/src/assets/images/hero_soccer_night_1795268211358.jpg';
 import heroTurfDetailImg from '@/src/assets/images/hero_turf_detail_1795268193867.jpg';
-import { PENDING_HOLD_MINUTES } from '@/src/lib/pricing';
+import {
+  HOURLY_RATE_FCFA,
+  PENDING_HOLD_MINUTES,
+  formatFcfa,
+} from '@/src/lib/pricing';
 
 const CAPABILITIES = [
   {
@@ -27,7 +31,7 @@ const CAPABILITIES = [
     number: '03',
     icon: MessageCircle,
     title: 'Confirmation WhatsApp directe',
-    description: `Votre créneau reste bloqué ${PENDING_HOLD_MINUTES} minutes le temps d’envoyer l’acompte par Mobile Money.`,
+    description: `Votre créneau reste bloqué ${PENDING_HOLD_MINUTES} minutes le temps d’effectuer le paiement intégral de ${formatFcfa(HOURLY_RATE_FCFA)}.`,
   },
   {
     number: '04',

@@ -6,13 +6,7 @@ import { SkipLink } from '@/src/components/SkipLink';
 import { isDatabaseConfigured } from '@/src/db';
 import { extractDbErrorDetails, getDaySlots, type DaySlot } from '@/src/lib/bookings';
 import { resolveFeexPayWidgetConfig } from '@/src/lib/feexpay';
-import {
-  DEPOSIT_PERCENTAGE,
-  formatFcfa,
-  getSlotPricing,
-  HOURLY_RATE_FCFA,
-  PENDING_HOLD_MINUTES,
-} from '@/src/lib/pricing';
+import { formatFcfa, HOURLY_RATE_FCFA, PENDING_HOLD_MINUTES } from '@/src/lib/pricing';
 import { getPortoNovoDateStr, getUpcoming7Days, isValidDateStr } from '@/src/lib/timezone';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +50,6 @@ export default async function ReserverPage({ searchParams }: ReserverPageProps) 
 
   const managerWhatsapp = process.env.NEXT_PUBLIC_MANAGER_WHATSAPP ?? '';
   const feexPayConfig = await resolveFeexPayWidgetConfig();
-  const samplePricing = getSlotPricing(18);
 
   return (
     <div className="min-h-screen bg-[#f8f7f2] text-[#16231b]">
@@ -91,7 +84,7 @@ export default async function ReserverPage({ searchParams }: ReserverPageProps) 
             </div>
 
             {/* Clean unboxed tariff summary */}
-            <dl className="grid grid-cols-3 gap-4 sm:gap-6 pt-4 border-t border-white/15 md:border-t-0 md:pt-0 md:border-l md:pl-6 shrink-0 tabular-nums">
+            <dl className="grid grid-cols-2 gap-4 sm:gap-6 pt-4 border-t border-white/15 md:border-t-0 md:pt-0 md:border-l md:pl-6 shrink-0 tabular-nums">
               <div>
                 <dt className="text-[11px] sm:text-xs text-[#f8f7f2]/70">
                   Tarif unique / 1h
@@ -102,18 +95,10 @@ export default async function ReserverPage({ searchParams }: ReserverPageProps) 
               </div>
               <div>
                 <dt className="text-[11px] sm:text-xs text-[#f8f7f2]/70">
-                  Acompte ({DEPOSIT_PERCENTAGE} %)
+                  Montant à payer
                 </dt>
                 <dd className="mt-0.5 font-display text-xl sm:text-2xl font-bold text-[#ff8747] whitespace-nowrap">
-                  {formatFcfa(samplePricing.depositFcfa)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] sm:text-xs text-[#f8f7f2]/70">
-                  Solde terrain
-                </dt>
-                <dd className="mt-0.5 font-display text-xl sm:text-2xl font-bold text-white whitespace-nowrap">
-                  {formatFcfa(samplePricing.remainingFcfa)}
+                  {formatFcfa(HOURLY_RATE_FCFA)}
                 </dd>
               </div>
             </dl>
