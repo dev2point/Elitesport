@@ -8,6 +8,7 @@ import {
   buildBookingIcsContent,
   buildGoogleCalendarUrl,
 } from '@/src/lib/calendar';
+import { formatFcfa } from '@/src/lib/pricing';
 import {
   getPortoNovoMonthRange,
   getPortoNovoWeekRange,
@@ -54,8 +55,7 @@ describe('Calendar ICS and Google Calendar generation', () => {
       teamName: 'FC Godomey',
       startsAtIso: '2026-11-20T17:00:00.000Z',
       endsAtIso: '2026-11-20T18:00:00.000Z',
-      priceFcfa: 7500,
-      depositFcfa: 2250,
+      priceFcfa: 25000,
     };
 
     const ics = buildBookingIcsContent(booking);
@@ -64,11 +64,17 @@ describe('Calendar ICS and Google Calendar generation', () => {
     expect(ics).toContain('DTSTART:20261120T170000Z');
     expect(ics).toContain('DTEND:20261120T180000Z');
     expect(ics).toContain('FC Godomey');
+    expect(ics).toContain(formatFcfa(booking.priceFcfa));
+    expect(ics).not.toContain('Acompte');
+    expect(ics).not.toContain('Solde');
     expect(ics).toContain('END:VCALENDAR');
 
     const gUrl = buildGoogleCalendarUrl(booking);
     expect(gUrl).toContain('https://calendar.google.com/calendar/render');
     expect(gUrl).toContain('20261120T170000Z%2F20261120T180000Z');
+    expect(new URL(gUrl).searchParams.get('details')).toContain(
+      formatFcfa(booking.priceFcfa)
+    );
   });
 });
 
@@ -87,11 +93,11 @@ describe('Admin day / week / month revenue stats', () => {
   it('aggregates day, week, and month revenue from confirmed/completed bookings', async () => {
     const rows = [
       // Today (2026-11-18 18:00+01:00 = 17:00Z)
-      { startsAt: new Date('2026-11-18T17:00:00.000Z'), priceFcfa: 7500, depositFcfa: 2250 },
+      { startsAt: new Date('2026-11-18T17:00:00.000Z'), priceFcfa: 25000 },
       // Same week, different day (2026-11-16 10:00+01:00 = 09:00Z)
-      { startsAt: new Date('2026-11-16T09:00:00.000Z'), priceFcfa: 5000, depositFcfa: 1500 },
+      { startsAt: new Date('2026-11-16T09:00:00.000Z'), priceFcfa: 25000 },
       // Same month, previous week (2026-11-05 14:00+01:00 = 13:00Z)
-      { startsAt: new Date('2026-11-05T13:00:00.000Z'), priceFcfa: 5000, depositFcfa: 1500 },
+      { startsAt: new Date('2026-11-05T13:00:00.000Z'), priceFcfa: 25000 },
     ];
 
     const mockDb = {
@@ -103,8 +109,8 @@ describe('Admin day / week / month revenue stats', () => {
     } as unknown as Database;
 
     const stats = await getAdminRevenueStats('2026-11-18', mockDb);
-    expect(stats.day).toEqual({ totalFcfa: 7500, depositFcfa: 2250, count: 1 });
-    expect(stats.week).toEqual({ totalFcfa: 12500, depositFcfa: 3750, count: 2 });
-    expect(stats.month).toEqual({ totalFcfa: 17500, depositFcfa: 5250, count: 3 });
+    expect(stats.day).toEqual({ totalFcfa: 25000, count: 1 });
+    expect(stats.week).toEqual({ totalFcfa: 50000, count: 2 });
+    expect(stats.month).toEqual({ totalFcfa: 75000, count: 3 });
   });
 });

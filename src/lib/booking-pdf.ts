@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import QRCode from 'qrcode';
 import type { BookingDetails } from './bookings';
-import { DEPOSIT_PERCENTAGE, formatFcfa } from './pricing';
+import { formatFcfa } from './pricing';
 
 const PAGE_WIDTH = 420; // A5 portrait width (pt)
 const PAGE_HEIGHT = 595; // A5 portrait height (pt)
@@ -251,19 +251,9 @@ export async function generateBookingPdf(
     { label: 'Creneau', value: fitText(booking.timeLabel, 24), highlight: 'bold' },
     { label: 'Lieu', value: 'Elite Sport Godomey, Cotonou' },
     {
-      label: 'Tarif terrain (1h)',
+      label: 'Paiement integral',
       value: normalizeWinAnsiText(formatFcfa(booking.priceFcfa)),
-      highlight: 'bold',
-    },
-    {
-      label: `Acompte (${DEPOSIT_PERCENTAGE} %)`,
-      value: normalizeWinAnsiText(formatFcfa(booking.depositFcfa)),
       highlight: 'turf',
-    },
-    {
-      label: 'Solde sur place',
-      value: normalizeWinAnsiText(formatFcfa(booking.remainingFcfa)),
-      highlight: 'bold',
     },
   ];
 

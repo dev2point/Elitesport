@@ -1,3 +1,5 @@
+import { formatFcfa } from './pricing';
+
 export interface CalendarBookingInput {
   id: string;
   reference: string;
@@ -5,7 +7,6 @@ export interface CalendarBookingInput {
   startsAtIso: string;
   endsAtIso: string;
   priceFcfa: number;
-  depositFcfa: number;
 }
 
 function toIcsUtcStamp(iso: string): string {
@@ -35,9 +36,7 @@ export function buildBookingIcsContent(booking: CalendarBookingInput): string {
   const description = [
     `Référence : ${booking.reference}`,
     `Équipe : ${booking.teamName}`,
-    `Tarif total : ${booking.priceFcfa} FCFA`,
-    `Acompte 30 % : ${booking.depositFcfa} FCFA`,
-    `Solde sur place : ${booking.priceFcfa - booking.depositFcfa} FCFA`,
+    `Paiement intégral : ${formatFcfa(booking.priceFcfa)}`,
   ].join('\n');
 
   return [
@@ -71,7 +70,7 @@ export function buildGoogleCalendarUrl(booking: CalendarBookingInput): string {
   )}`;
   const text = `Foot — Élite Sport Godomey (${booking.teamName})`;
   const location = 'Terrain Élite Sport Godomey, Godomey, Cotonou, Bénin';
-  const details = `Référence : ${booking.reference}\nÉquipe : ${booking.teamName}\nTarif : ${booking.priceFcfa} FCFA (Acompte 30 % : ${booking.depositFcfa} FCFA)`;
+  const details = `Référence : ${booking.reference}\nÉquipe : ${booking.teamName}\nPaiement intégral : ${formatFcfa(booking.priceFcfa)}`;
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',

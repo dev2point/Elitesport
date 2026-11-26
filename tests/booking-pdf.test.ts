@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { PDFDocument } from 'pdf-lib';
 import type { BookingDetails } from '@/src/lib/bookings';
+import { formatFcfa } from '@/src/lib/pricing';
 import {
   generateBookingPdf,
   generateBookingQrPng,
@@ -21,8 +22,6 @@ describe('Booking PDF & QR code generation', () => {
     phone: '0197000000',
     status: 'confirmed',
     priceFcfa: 25000,
-    depositFcfa: 7500,
-    remainingFcfa: 17500,
     expiresAtIso: null,
   };
 
@@ -59,5 +58,8 @@ describe('Booking PDF & QR code generation', () => {
     const loaded = await PDFDocument.load(pdfBytes);
     expect(loaded.getPageCount()).toBe(1);
     expect(loaded.getTitle()).toBe('Fiche de reservation ESG-111111');
+    expect(normalizeWinAnsiText(formatFcfa(sampleBooking.priceFcfa))).toBe(
+      '25 000 FCFA'
+    );
   });
 });
