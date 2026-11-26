@@ -456,7 +456,7 @@ const feexPayInitResponseSchema = z
   })
   .passthrough();
 
-export async function initiateFeexPayDeposit(
+export async function initiateFeexPayPayment(
   params: {
     bookingId: string;
     bookingReference: string;
@@ -490,7 +490,7 @@ export async function initiateFeexPayDeposit(
   const endpointUrl = `${baseUrl}${CHANNEL_ENDPOINTS[params.channel]}`;
   const formattedPhone = formatBeninPhoneForFeexPay(params.phone, params.channel);
   const description = (
-    params.description ?? `Acompte ${params.bookingReference}`
+    params.description ?? `Paiement intégral ${params.bookingReference}`
   ).slice(0, 40);
 
   try {

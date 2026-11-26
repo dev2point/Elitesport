@@ -1,17 +1,26 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'bun:test';
 import type { Database } from '@/src/db';
-import { payments } from '@/src/db/schema';
+import { bookings, payments } from '@/src/db/schema';
 import {
   fetchFeexPayTransactionStatus,
   formatBeninPhoneForFeexPay,
-  initiateFeexPayDeposit,
+  initiateFeexPayPayment,
   isSafeFeexPayRedirectUrl,
   isValidFeexPayReference,
   verifyFeexPayWebhookAuthorization,
   verifyFeexPayWebhookSignature,
 } from '@/src/lib/feexpay';
 import { processVerifiedFeexPayTransaction } from '@/src/lib/payments';
+
+const BOOKING_ID = '11111111-1111-4111-8111-111111111111';
+const FULL_PRICE_FCFA = 25000;
+
+function expectNoProgressFields(result: object): void {
+  for (const key of ['stage', 'paidFcfa', 'remainingFcfa', 'depositFcfa']) {
+    expect(Object.keys(result)).not.toContain(key);
+  }
+}
 
 describe('FeexPay webhook HMAC-SHA256 verification', () => {
   const secret = 'fxp_whsec_test_secret_123456';
@@ -46,7 +55,6 @@ describe('FeexPay webhook HMAC-SHA256 verification', () => {
       .update(`${timestamp}.${deliveryId}.${rawBody}`, 'utf8')
       .digest('hex');
 
-    // Tampered body
     expect(
       verifyFeexPayWebhookSignature({
         rawBody: rawBody.replace('tx_12345', 'tx_99999'),
@@ -58,7 +66,6 @@ describe('FeexPay webhook HMAC-SHA256 verification', () => {
       })
     ).toBe(false);
 
-    // Expired timestamp (> 300s)
     expect(
       verifyFeexPayWebhookSignature({
         rawBody,
@@ -122,7 +129,7 @@ describe('FeexPay reference validation & REST status verification', () => {
           reseau: 'MTN BJ',
           custom_id: 'ESG-111111',
           callback_info: JSON.stringify({
-            bookingId: '11111111-1111-4111-8111-111111111111',
+            bookingId: BOOKING_ID,
             reference: 'ESG-111111',
           }),
         }),
@@ -145,25 +152,46 @@ describe('FeexPay reference validation & REST status verification', () => {
       expect(result.transaction.normalizedStatus).toBe('SUCCESSFUL');
       expect(result.transaction.amountFcfa).toBe(2250);
       expect(result.transaction.operator).toBe('MTN BJ');
-      expect(result.transaction.callbackInfo.bookingId).toBe(
-        '11111111-1111-4111-8111-111111111111'
-      );
+      expect(result.transaction.callbackInfo.bookingId).toBe(BOOKING_ID);
     }
   });
 });
 
-describe('Idempotent FeexPay payment confirmation', () => {
+describe('Full-payment-only FeexPay confirmation', () => {
+  function collectStringParams(condition: unknown): string[] {
+    const values: string[] = [];
+    const seen = new WeakSet<object>();
+
+    function walk(value: unknown): void {
+      if (!value || typeof value !== 'object' || seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+      for (const [key, nested] of Object.entries(value)) {
+        if (key === 'value' && typeof nested === 'string') {
+          values.push(nested);
+        }
+        walk(nested);
+      }
+    }
+
+    walk(condition);
+    return values;
+  }
+
+  function toPaymentStatus(value: unknown): 'pending' | 'successful' | 'failed' {
+    return value === 'pending' || value === 'failed' ? value : 'successful';
+  }
+
   function createMockDb(initialStatus: 'pending' | 'confirmed' | 'cancelled' = 'pending') {
-    const bookingId = '11111111-1111-4111-8111-111111111111';
     const bookingRow = {
-      id: bookingId,
+      id: BOOKING_ID,
       status: initialStatus,
-      depositFcfa: 2250,
-      priceFcfa: 7500,
+      priceFcfa: FULL_PRICE_FCFA,
       expiresAt: initialStatus === 'pending' ? new Date('2026-11-21T12:15:00.000Z') : null,
     };
 
-    const paymentRows: Array<{
+    interface PaymentRow {
       id: string;
       bookingId: string;
       amountFcfa: number;
@@ -171,86 +199,123 @@ describe('Idempotent FeexPay payment confirmation', () => {
       transactionRef: string;
       status: 'pending' | 'successful' | 'failed';
       rawStatus: string | null;
-    }> = [];
+    }
 
+    const paymentRows: PaymentRow[] = [];
     let bookingUpdateCount = 0;
 
+    function rowsResult<T>(rows: T[]) {
+      const copy = [...rows];
+      return Object.assign(copy, {
+        limit: async (count: number) => copy.slice(0, count),
+      });
+    }
+
     const dbApi = {
-      select: () => ({
-        from: (table: unknown) => {
-          const rows = table === payments ? paymentRows : [bookingRow];
-          return {
-            where: () => ({
-              limit: async () => rows.slice(0, 1),
-            }),
-          };
-        },
+      select: (selection?: Record<string, unknown>) => ({
+        from: (table: unknown) => ({
+          where: (condition: unknown) => {
+            const params = collectStringParams(condition);
+            if (table === payments) {
+              const isLookup =
+                selection !== undefined && Object.keys(selection).includes('id');
+              const rows = isLookup
+                ? paymentRows.filter((p) => params.includes(p.transactionRef))
+                : paymentRows.filter(
+                    (p) => params.includes(p.bookingId) && params.includes('successful')
+                  );
+              return rowsResult(rows);
+            }
+            return rowsResult([bookingRow]);
+          },
+        }),
       }),
-      update: () => ({
+      update: (table: unknown) => ({
         set: (values: Record<string, unknown>) => ({
-          where: () => {
-            if ('expiresAt' in values) {
-              return {
-                returning: async () => {
-                  if (bookingRow.status === 'pending') {
-                    bookingRow.status = 'confirmed';
-                    bookingRow.expiresAt = null;
-                    bookingUpdateCount += 1;
-                    return [{ status: 'confirmed' }];
-                  }
-                  return [];
-                },
-              };
+          where: (condition: unknown) => {
+            if (table === bookings) {
+              const keys = Object.keys(values);
+              if (keys.includes('expiresAt') && keys.includes('status')) {
+                return {
+                  returning: async () => {
+                    if (bookingRow.status === 'pending') {
+                      bookingRow.status = 'confirmed';
+                      bookingRow.expiresAt = null;
+                      bookingUpdateCount += 1;
+                      return [{ status: 'confirmed' }];
+                    }
+                    return [];
+                  },
+                };
+              }
+              return Promise.resolve([]);
             }
-            if ('amountFcfa' in values && paymentRows[0]) {
-              paymentRows[0].amountFcfa = Number(values.amountFcfa);
-              paymentRows[0].status = 'successful';
+
+            if (table === payments) {
+              const params = collectStringParams(condition);
+              const row =
+                paymentRows.find(
+                  (p) => params.includes(p.id) || params.includes(p.transactionRef)
+                ) ?? null;
+              if (row) {
+                if (typeof values.amountFcfa === 'number') {
+                  row.amountFcfa = values.amountFcfa;
+                }
+                if (typeof values.operator === 'string') {
+                  row.operator = values.operator;
+                }
+                row.status = toPaymentStatus(values.status);
+                row.rawStatus =
+                  typeof values.rawStatus === 'string' ? values.rawStatus : null;
+              }
             }
+
             return Promise.resolve([]);
           },
         }),
       }),
-      insert: () => ({
+      insert: (_table: unknown) => ({
         values: (vals: {
           bookingId: string;
           amountFcfa: number;
           operator: string;
           transactionRef: string;
+          status?: 'pending' | 'successful' | 'failed';
           rawStatus?: string;
-        }) => ({
-          onConflictDoNothing: async () => {
-            if (!paymentRows.some((p) => p.transactionRef === vals.transactionRef)) {
-              paymentRows.push({
-                id: `pay-${paymentRows.length + 1}`,
-                bookingId: vals.bookingId,
-                amountFcfa: vals.amountFcfa,
-                operator: vals.operator,
-                transactionRef: vals.transactionRef,
-                status: vals.rawStatus === 'AMOUNT_TOO_LOW' ? 'failed' : 'successful',
-                rawStatus: vals.rawStatus ?? null,
-              });
-            }
-          },
-          onConflictDoUpdate: async () => {
-            const existing = paymentRows.find((p) => p.transactionRef === vals.transactionRef);
+        }) => {
+          function newRow(): PaymentRow {
+            return {
+              id: `pay-${paymentRows.length + 1}`,
+              bookingId: vals.bookingId,
+              amountFcfa: vals.amountFcfa,
+              operator: vals.operator,
+              transactionRef: vals.transactionRef,
+              status: vals.status ?? (vals.rawStatus === 'AMOUNT_MISMATCH' ? 'failed' : 'successful'),
+              rawStatus: vals.rawStatus ?? null,
+            };
+          }
+
+          function upsert(shouldUpdate: boolean): void {
+            const existing = paymentRows.find(
+              (p) => p.transactionRef === vals.transactionRef
+            );
             if (!existing) {
-              paymentRows.push({
-                id: `pay-${paymentRows.length + 1}`,
-                bookingId: vals.bookingId,
-                amountFcfa: vals.amountFcfa,
-                operator: vals.operator,
-                transactionRef: vals.transactionRef,
-                status:
-                  vals.rawStatus === 'FAILED'
-                    ? 'failed'
-                    : vals.rawStatus === 'PENDING'
-                      ? 'pending'
-                      : 'successful',
-                rawStatus: vals.rawStatus ?? null,
-              });
+              paymentRows.push(newRow());
+              return;
             }
-          },
-        }),
+            if (shouldUpdate) {
+              existing.amountFcfa = vals.amountFcfa;
+              existing.operator = vals.operator;
+              existing.status = vals.status ?? existing.status;
+              existing.rawStatus = vals.rawStatus ?? existing.rawStatus;
+            }
+          }
+
+          return {
+            onConflictDoNothing: async () => upsert(false),
+            onConflictDoUpdate: async () => upsert(true),
+          };
+        },
       }),
       transaction: async <T>(fn: (tx: Database) => Promise<T>) =>
         fn(dbApi as unknown as Database),
@@ -264,140 +329,167 @@ describe('Idempotent FeexPay payment confirmation', () => {
     };
   }
 
-  it('confirms pending booking on first verified webhook and stays idempotent on duplicate delivery', async () => {
+  function verifiedTransaction(
+    reference: string,
+    amountFcfa: number,
+    overrides?: {
+      normalizedStatus?: 'SUCCESSFUL' | 'PENDING' | 'FAILED';
+      rawStatus?: string;
+    }
+  ) {
+    return {
+      ok: true as const,
+      transaction: {
+        reference,
+        rawStatus: overrides?.rawStatus ?? 'SUCCESSFUL',
+        normalizedStatus: overrides?.normalizedStatus ?? ('SUCCESSFUL' as const),
+        amountFcfa,
+        operator: 'MTN BJ',
+        customId: 'ESG-111111',
+        orderId: null,
+        callbackInfo: {
+          bookingId: BOOKING_ID,
+          reference: 'ESG-111111',
+        },
+        reason: null,
+      },
+    };
+  }
+
+  it('confirms only the exact full payment and keeps duplicate webhooks idempotent', async () => {
     const ctx = createMockDb('pending');
     let verifyCalls = 0;
-
     const verifyFn = async (reference: string) => {
       verifyCalls += 1;
-      return {
-        ok: true as const,
-        transaction: {
-          reference,
-          rawStatus: 'SUCCESSFUL',
-          normalizedStatus: 'SUCCESSFUL' as const,
-          amountFcfa: 2250,
-          operator: 'MTN BJ',
-          customId: 'ESG-111111',
-          orderId: null,
-          callbackInfo: {
-            bookingId: '11111111-1111-4111-8111-111111111111',
-            reference: 'ESG-111111',
-          },
-          reason: null,
-        },
-      };
+      return verifiedTransaction(reference, FULL_PRICE_FCFA);
     };
 
     const first = await processVerifiedFeexPayTransaction(
-      { reference: 'feexpay_tx_001' },
-      { db: ctx.db, verifyTransaction: verifyFn, now: new Date('2026-11-21T12:05:00.000Z') }
+      { reference: 'feexpay_tx_full' },
+      {
+        db: ctx.db,
+        verifyTransaction: verifyFn,
+        now: new Date('2026-11-21T12:05:00.000Z'),
+      }
     );
 
     expect(first.ok).toBe(true);
     if (first.ok) {
       expect(first.idempotent).toBe(false);
-      expect(first.bookingStatus).toBe('confirmed');
       expect(first.paymentStatus).toBe('successful');
+      expect(first.bookingStatus).toBe('confirmed');
+      expect(first.amountFcfa).toBe(FULL_PRICE_FCFA);
+      expect(first.transactionRef).toBe('feexpay_tx_full');
+      expectNoProgressFields(first);
     }
     expect(ctx.bookingRow.status).toBe('confirmed');
     expect(ctx.paymentRows).toHaveLength(1);
+    expect(ctx.paymentRows[0]?.status).toBe('successful');
     expect(ctx.getBookingUpdateCount()).toBe(1);
 
-    // Second identical webhook -> strictly idempotent, no second API or booking mutation
-    const second = await processVerifiedFeexPayTransaction(
-      { reference: 'feexpay_tx_001' },
-      { db: ctx.db, verifyTransaction: verifyFn, now: new Date('2026-11-21T12:05:05.000Z') }
+    const duplicate = await processVerifiedFeexPayTransaction(
+      { reference: 'feexpay_tx_full' },
+      {
+        db: ctx.db,
+        verifyTransaction: verifyFn,
+        now: new Date('2026-11-21T12:05:05.000Z'),
+      }
     );
 
-    expect(second.ok).toBe(true);
-    if (second.ok) {
-      expect(second.idempotent).toBe(true);
-      expect(second.bookingStatus).toBe('confirmed');
+    expect(duplicate.ok).toBe(true);
+    if (duplicate.ok) {
+      expect(duplicate.idempotent).toBe(true);
+      expect(duplicate.bookingStatus).toBe('confirmed');
+      expectNoProgressFields(duplicate);
     }
     expect(verifyCalls).toBe(1);
     expect(ctx.paymentRows).toHaveLength(1);
     expect(ctx.getBookingUpdateCount()).toBe(1);
   });
 
-  it('rejects underpaid deposits and mismatched booking references', async () => {
-    const ctx = createMockDb('pending');
+  it('rejects partial and overpayments without confirming', async () => {
+    for (const amount of [500, 7500, 3000]) {
+      const ctx = createMockDb('pending');
+      const result = await processVerifiedFeexPayTransaction(
+        { reference: `feexpay_tx_${amount}` },
+        {
+          db: ctx.db,
+          verifyTransaction: async (reference) => verifiedTransaction(reference, amount),
+        }
+      );
 
-    const underpaid = await processVerifiedFeexPayTransaction(
-      { reference: 'feexpay_tx_underpaid' },
-      {
-        db: ctx.db,
-        verifyTransaction: async (reference) => ({
-          ok: true,
-          transaction: {
-            reference,
-            rawStatus: 'SUCCESSFUL',
-            normalizedStatus: 'SUCCESSFUL',
-            amountFcfa: 500, // less than 2250 deposit
-            operator: 'MOOV BJ',
-            customId: 'ESG-111111',
-            orderId: null,
-            callbackInfo: {
-              bookingId: '11111111-1111-4111-8111-111111111111',
-            },
-            reason: null,
-          },
-        }),
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.code).toBe('AMOUNT_MISMATCH');
+        expect(result.error).toContain('25 000 FCFA');
       }
-    );
-
-    expect(underpaid.ok).toBe(false);
-    if (!underpaid.ok) {
-      expect(underpaid.code).toBe('AMOUNT_MISMATCH');
+      expect(ctx.bookingRow.status).toBe('pending');
+      expect(ctx.paymentRows[0]?.status).toBe('failed');
+      expect(ctx.paymentRows[0]?.rawStatus).toBe('AMOUNT_MISMATCH');
+      expect(ctx.getBookingUpdateCount()).toBe(0);
     }
-    expect(ctx.bookingRow.status).toBe('pending');
   });
 
-  it('records failed payment without confirming booking so user can use WhatsApp Plan B', async () => {
+  it('rejects a second distinct successful payment for an already paid booking', async () => {
     const ctx = createMockDb('pending');
+    const verifyFn = async (reference: string) =>
+      verifiedTransaction(reference, FULL_PRICE_FCFA);
 
-    const failed = await processVerifiedFeexPayTransaction(
+    const first = await processVerifiedFeexPayTransaction(
+      { reference: 'feexpay_tx_full' },
+      { db: ctx.db, verifyTransaction: verifyFn }
+    );
+    expect(first.ok).toBe(true);
+
+    const second = await processVerifiedFeexPayTransaction(
+      { reference: 'feexpay_tx_second' },
+      { db: ctx.db, verifyTransaction: verifyFn }
+    );
+
+    expect(second.ok).toBe(false);
+    if (!second.ok) {
+      expect(second.code).toBe('AMOUNT_MISMATCH');
+      expect(second.error).toContain('déjà réglé');
+    }
+    expect(ctx.bookingRow.status).toBe('confirmed');
+    expect(ctx.paymentRows.filter((p) => p.status === 'successful')).toHaveLength(1);
+    expect(ctx.paymentRows.filter((p) => p.rawStatus === 'AMOUNT_MISMATCH')).toHaveLength(1);
+    expect(ctx.getBookingUpdateCount()).toBe(1);
+  });
+
+  it('records a failed FeexPay status without confirming the booking', async () => {
+    const ctx = createMockDb('pending');
+    const result = await processVerifiedFeexPayTransaction(
       { reference: 'feexpay_tx_failed' },
       {
         db: ctx.db,
-        verifyTransaction: async (reference) => ({
-          ok: true,
-          transaction: {
-            reference,
-            rawStatus: 'FAILED',
+        verifyTransaction: async (reference) =>
+          verifiedTransaction(reference, FULL_PRICE_FCFA, {
             normalizedStatus: 'FAILED',
-            amountFcfa: 2250,
-            operator: 'MTN BJ',
-            customId: 'ESG-111111',
-            orderId: null,
-            callbackInfo: {
-              bookingId: '11111111-1111-4111-8111-111111111111',
-            },
-            reason: 'INSUFFICIENT_FUNDS',
-          },
-        }),
+            rawStatus: 'FAILED',
+          }),
       }
     );
 
-    expect(failed.ok).toBe(true);
-    if (failed.ok) {
-      expect(failed.paymentStatus).toBe('failed');
-      expect(failed.bookingStatus).toBe('pending');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.paymentStatus).toBe('failed');
+      expect(result.bookingStatus).toBe('pending');
+      expectNoProgressFields(result);
     }
     expect(ctx.bookingRow.status).toBe('pending');
     expect(ctx.paymentRows[0]?.status).toBe('failed');
+    expect(ctx.paymentRows[0]?.rawStatus).toBe('FAILED');
+    expect(ctx.getBookingUpdateCount()).toBe(0);
   });
 
-  it('still confirms pending booking cleanly if the payments audit table does not exist (42P01)', async () => {
-    const bookingId = '11111111-1111-4111-8111-111111111111';
+  it('fails closed when the payments table is missing (42P01)', async () => {
     const bookingRow = {
-      id: bookingId,
-      status: 'pending' as 'pending' | 'confirmed',
-      depositFcfa: 7500,
-      priceFcfa: 25000,
+      id: BOOKING_ID,
+      status: 'pending' as const,
+      priceFcfa: FULL_PRICE_FCFA,
       expiresAt: new Date('2026-11-21T12:15:00.000Z') as Date | null,
     };
-
     const missingPaymentsError = Object.assign(
       new Error('relation "payments" does not exist'),
       { code: '42P01' }
@@ -416,59 +508,23 @@ describe('Idempotent FeexPay payment confirmation', () => {
           }),
         }),
       }),
-      update: () => ({
-        set: (values: Record<string, unknown>) => ({
-          where: () => {
-            if ('expiresAt' in values) {
-              return {
-                returning: async () => {
-                  if (bookingRow.status === 'pending') {
-                    bookingRow.status = 'confirmed';
-                    bookingRow.expiresAt = null;
-                    return [{ status: 'confirmed' }];
-                  }
-                  return [];
-                },
-              };
-            }
-            return Promise.resolve([]);
-          },
-        }),
-      }),
-      transaction: async <T>(fn: (tx: Database) => Promise<T>) =>
-        fn(dbWithoutPayments as unknown as Database),
     } as unknown as Database;
 
     const result = await processVerifiedFeexPayTransaction(
-      { reference: 'feexpay_tx_no_table', bookingIdHint: bookingId },
+      { reference: 'feexpay_tx_no_table', bookingIdHint: BOOKING_ID },
       {
         db: dbWithoutPayments,
-        verifyTransaction: async (reference) => ({
-          ok: true,
-          transaction: {
-            reference,
-            rawStatus: 'SUCCESSFUL',
-            normalizedStatus: 'SUCCESSFUL',
-            amountFcfa: 7500,
-            operator: 'MTN BJ',
-            customId: 'ESG-111111',
-            orderId: null,
-            callbackInfo: {
-              bookingId,
-              reference: 'ESG-111111',
-            },
-            reason: null,
-          },
-        }),
+        verifyTransaction: async (reference) =>
+          verifiedTransaction(reference, FULL_PRICE_FCFA),
       }
     );
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.paymentStatus).toBe('successful');
-      expect(result.bookingStatus).toBe('confirmed');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('INTERNAL_ERROR');
+      expect(result.error).toContain('sql/003_payments.sql');
     }
-    expect(bookingRow.status).toBe('confirmed');
+    expect(bookingRow.status).toBe('pending');
   });
 });
 
@@ -480,7 +536,7 @@ describe('Server-side FeexPay Payin initiation (Sandbox & Production)', () => {
     expect(formatBeninPhoneForFeexPay('+2290197000000', 'celtiis')).toBe('2290197000000');
   });
 
-  it('initiates MTN sandbox push against sandbox-api.feexpay.me', async () => {
+  it('initiates MTN sandbox push for the full 25 000 FCFA slot price', async () => {
     let calledUrl = '';
     let sentBody: Record<string, unknown> = {};
 
@@ -491,17 +547,17 @@ describe('Server-side FeexPay Payin initiation (Sandbox & Production)', () => {
         JSON.stringify({
           reference: '3670412f-8f6f-4cc1-879c-1f4570035ffc',
           status: 'PENDING',
-          amount: 7500,
+          amount: FULL_PRICE_FCFA,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }) as typeof fetch;
 
-    const result = await initiateFeexPayDeposit(
+    const result = await initiateFeexPayPayment(
       {
-        bookingId: '11111111-1111-4111-8111-111111111111',
+        bookingId: BOOKING_ID,
         bookingReference: 'ESG-111111',
-        amountFcfa: 7500,
+        amountFcfa: FULL_PRICE_FCFA,
         phone: '0197000000',
         channel: 'mtn',
       },
@@ -517,14 +573,14 @@ describe('Server-side FeexPay Payin initiation (Sandbox & Production)', () => {
       'https://sandbox-api.feexpay.me/api/transactions/public/requesttopay/mtn'
     );
     expect(sentBody.shop).toBe('xSgF8Ckt6nPXSDp');
-    expect(sentBody.amount).toBe(7500);
+    expect(sentBody.amount).toBe(FULL_PRICE_FCFA);
     expect(sentBody.phoneNumber).toBe('2290197000000');
     expect(result.ok).toBe(true);
     expect(result.reference).toBe('3670412f-8f6f-4cc1-879c-1f4570035ffc');
     expect(result.status).toBe('PENDING');
   });
 
-  it('validates card redirect URLs strictly on *.feexpay.me', async () => {
+  it('validates card redirect URLs strictly on *.feexpay.me', () => {
     expect(
       isSafeFeexPayRedirectUrl(
         'https://sandbox-api.feexpay.me/api/card/sandbox/checkout/card-details?ref=abc'
@@ -534,4 +590,3 @@ describe('Server-side FeexPay Payin initiation (Sandbox & Production)', () => {
     expect(isSafeFeexPayRedirectUrl('http://sandbox-api.feexpay.me/insecure')).toBe(false);
   });
 });
-

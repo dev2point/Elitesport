@@ -11,7 +11,12 @@ import {
   type FeexPayVerificationResult,
   type FeexPayVerifiedTransaction,
 } from './feexpay';
+import { hasSuccessfulFullPayment } from './payment-ledger';
+import { formatFcfa } from './pricing';
 import { bookingIdSchema } from './validations';
+
+const PAYMENTS_TABLE_MISSING_ERROR =
+  'La table des paiements est absente. Exécutez sql/003_payments.sql dans Supabase avant de reprendre le paiement.';
 
 export interface ProcessPaymentInput {
   reference: string;
@@ -42,6 +47,69 @@ export type ProcessPaymentResult =
         | 'INTERNAL_ERROR';
       error: string;
     };
+
+interface AuditPaymentParams {
+  bookingId: string;
+  amountFcfa: number;
+  operator: string;
+  transactionRef: string;
+}
+
+type ConfirmationOutcome =
+  | { kind: 'recorded'; idempotent: boolean; bookingStatus: BookingStatus }
+  | { kind: 'already_paid' };
+
+function isPaymentsTableMissing(error: unknown): boolean {
+  return extractDbErrorDetails(error).code === '42P01';
+}
+
+function mapPaymentStatus(
+  normalizedStatus: FeexPayVerifiedTransaction['normalizedStatus']
+): PaymentStatus {
+  if (normalizedStatus === 'SUCCESSFUL') return 'successful';
+  if (normalizedStatus === 'PENDING') return 'pending';
+  return 'failed';
+}
+
+async function recordAmountMismatchAudit(
+  db: Database,
+  params: AuditPaymentParams,
+  now: Date
+): Promise<void> {
+  try {
+    await db
+      .insert(payments)
+      .values({
+        bookingId: params.bookingId,
+        amountFcfa: params.amountFcfa,
+        operator: params.operator,
+        transactionRef: params.transactionRef,
+        status: 'failed',
+        rawStatus: 'AMOUNT_MISMATCH',
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: payments.transactionRef,
+        set: {
+          amountFcfa: params.amountFcfa,
+          operator: params.operator,
+          status: 'failed',
+          rawStatus: 'AMOUNT_MISMATCH',
+          updatedAt: now,
+        },
+      });
+  } catch (error) {
+    if (isPaymentsTableMissing(error)) {
+      throw error;
+    }
+    const details = extractDbErrorDetails(error);
+    console.warn(
+      'Amount mismatch payment audit skipped:',
+      details.code ?? 'UNKNOWN',
+      details.message
+    );
+  }
+}
 
 function resolveBookingIdentifiers(tx: FeexPayVerifiedTransaction): {
   bookingIdFromInfo: string | null;
@@ -96,7 +164,7 @@ function doesTransactionMatchBooking(
 
 /**
  * Authoritatively verifies a FeexPay transaction against FeexPay's REST API,
- * checks amount & booking binding, records the `payments` row idempotently,
+ * requires the exact full slot price, records the `payments` row idempotently,
  * and transitions a `pending` booking to `confirmed` inside a DB transaction.
  */
 export async function processVerifiedFeexPayTransaction(
@@ -130,8 +198,7 @@ export async function processVerifiedFeexPayTransaction(
   const now = deps?.now ?? new Date();
 
   try {
-    // 1. Fast idempotency check: if this transactionRef was already verified & recorded as successful, do nothing
-    let paymentsTableAvailable = true;
+    // 1. Fast idempotency check: this transactionRef was already fully paid.
     let existingPayment:
       | {
           id: string;
@@ -157,37 +224,56 @@ export async function processVerifiedFeexPayTransaction(
         .where(eq(payments.transactionRef, reference))
         .limit(1);
     } catch (lookupError) {
-      const details = extractDbErrorDetails(lookupError);
-      if (details.code === '42P01') {
-        paymentsTableAvailable = false;
-        console.warn(
-          'FeexPay payment audit disabled: table "payments" missing. Run sql/003_payments.sql in Supabase.'
-        );
-      } else {
-        throw lookupError;
+      if (isPaymentsTableMissing(lookupError)) {
+        return {
+          ok: false,
+          code: 'INTERNAL_ERROR',
+          error: PAYMENTS_TABLE_MISSING_ERROR,
+        };
       }
+      throw lookupError;
     }
 
     if (existingPayment && existingPayment.status === 'successful') {
       const [existingBooking] = await db
-        .select({ id: bookings.id, status: bookings.status })
+        .select({
+          id: bookings.id,
+          status: bookings.status,
+          priceFcfa: bookings.priceFcfa,
+        })
         .from(bookings)
         .where(eq(bookings.id, existingPayment.bookingId))
         .limit(1);
+
+      if (!existingBooking) {
+        return {
+          ok: false,
+          code: 'BOOKING_NOT_FOUND',
+          error: 'Réservation introuvable.',
+        };
+      }
+
+      if (existingPayment.amountFcfa !== existingBooking.priceFcfa) {
+        return {
+          ok: false,
+          code: 'AMOUNT_MISMATCH',
+          error: `Paiement enregistré (${formatFcfa(existingPayment.amountFcfa)}) incorrect. Montant attendu : ${formatFcfa(existingBooking.priceFcfa)}.`,
+        };
+      }
 
       return {
         ok: true,
         idempotent: true,
         paymentStatus: 'successful',
         bookingId: existingPayment.bookingId,
-        bookingStatus: existingBooking?.status ?? 'confirmed',
+        bookingStatus: existingBooking.status,
         amountFcfa: existingPayment.amountFcfa,
         operator: existingPayment.operator,
         transactionRef: existingPayment.transactionRef,
       };
     }
 
-    // 2. Never trust incoming body/client — verify directly against FeexPay API
+    // 2. Never trust incoming body/client — verify directly against FeexPay API.
     const verifyFn =
       deps?.verifyTransaction ?? ((ref) => fetchFeexPayTransactionStatus(ref));
     const verification = await verifyFn(reference);
@@ -211,7 +297,7 @@ export async function processVerifiedFeexPayTransaction(
 
     const verifiedTx = verification.transaction;
 
-    // 3. Locate the linked booking
+    // 3. Locate the linked booking.
     const { bookingIdFromInfo } = resolveBookingIdentifiers(verifiedTx);
     const hintParsed = input.bookingIdHint
       ? bookingIdSchema.safeParse(input.bookingIdHint)
@@ -236,7 +322,6 @@ export async function processVerifiedFeexPayTransaction(
       .select({
         id: bookings.id,
         status: bookings.status,
-        depositFcfa: bookings.depositFcfa,
         priceFcfa: bookings.priceFcfa,
       })
       .from(bookings)
@@ -253,7 +338,7 @@ export async function processVerifiedFeexPayTransaction(
 
     const bookingReference = buildBookingReference(booking.id);
 
-    // 4. Verify the transaction explicitly belongs to this booking
+    // 4. Verify the transaction explicitly belongs to this booking.
     if (
       !doesTransactionMatchBooking(
         verifiedTx,
@@ -269,123 +354,173 @@ export async function processVerifiedFeexPayTransaction(
       };
     }
 
-    // 5. Verify amount covers the required deposit (integer FCFA)
-    if (verifiedTx.amountFcfa < booking.depositFcfa) {
-      if (paymentsTableAvailable) {
-        try {
-          await db
-            .insert(payments)
-            .values({
-              bookingId: booking.id,
-              amountFcfa: verifiedTx.amountFcfa,
-              operator: verifiedTx.operator,
-              transactionRef: verifiedTx.reference,
-              status: 'failed',
-              rawStatus: 'AMOUNT_TOO_LOW',
-              updatedAt: now,
-            })
-            .onConflictDoNothing();
-        } catch (auditError) {
-          const details = extractDbErrorDetails(auditError);
-          console.warn(
-            'Underpaid payment audit skipped:',
-            details.code ?? 'UNKNOWN',
-            details.message
-          );
-        }
+    // 5. Full-payment-only guard: exact integer amount, no prior full payment.
+    let alreadyPaid: boolean;
+    try {
+      alreadyPaid = await hasSuccessfulFullPayment(
+        db,
+        booking.id,
+        booking.priceFcfa,
+        verifiedTx.reference
+      );
+    } catch (ledgerError) {
+      if (isPaymentsTableMissing(ledgerError)) {
+        return {
+          ok: false,
+          code: 'INTERNAL_ERROR',
+          error: PAYMENTS_TABLE_MISSING_ERROR,
+        };
+      }
+      throw ledgerError;
+    }
+
+    const amountIsExact =
+      Number.isInteger(verifiedTx.amountFcfa) && verifiedTx.amountFcfa === booking.priceFcfa;
+
+    if (
+      alreadyPaid ||
+      (verifiedTx.normalizedStatus === 'SUCCESSFUL' && !amountIsExact)
+    ) {
+      await recordAmountMismatchAudit(
+        db,
+        {
+          bookingId: booking.id,
+          amountFcfa: verifiedTx.amountFcfa,
+          operator: verifiedTx.operator,
+          transactionRef: verifiedTx.reference,
+        },
+        now
+      );
+
+      if (alreadyPaid) {
+        return {
+          ok: false,
+          code: 'AMOUNT_MISMATCH',
+          error: `Le montant total est déjà réglé (${formatFcfa(booking.priceFcfa)}). Aucun second paiement n'est attendu.`,
+        };
       }
 
       return {
         ok: false,
         code: 'AMOUNT_MISMATCH',
-        error: `Montant payé (${verifiedTx.amountFcfa} FCFA) inférieur à l’acompte requis (${booking.depositFcfa} FCFA).`,
+        error: `Montant payé (${formatFcfa(verifiedTx.amountFcfa)}) incorrect. Montant attendu : ${formatFcfa(booking.priceFcfa)}.`,
       };
     }
 
-    // 6. Persist payment & transition booking atomically
-    const mappedPaymentStatus: PaymentStatus =
-      verifiedTx.normalizedStatus === 'SUCCESSFUL'
-        ? 'successful'
-        : verifiedTx.normalizedStatus === 'PENDING'
-          ? 'pending'
-          : 'failed';
+    // 6. Persist payment & transition booking atomically.
+    const mappedPaymentStatus = mapPaymentStatus(verifiedTx.normalizedStatus);
 
-    const outcome = await db.transaction(async (tx) => {
-      if (paymentsTableAvailable) {
-        // Re-check inside transaction for concurrency/idempotency
-        const [currentPayment] = await tx
-          .select({
-            id: payments.id,
-            status: payments.status,
+    const outcome = await db.transaction(async (tx): Promise<ConfirmationOutcome> => {
+      const [currentPayment] = await tx
+        .select({
+          id: payments.id,
+          status: payments.status,
+        })
+        .from(payments)
+        .where(eq(payments.transactionRef, verifiedTx.reference))
+        .limit(1);
+
+      const [latestBooking] = await tx
+        .select({ status: bookings.status })
+        .from(bookings)
+        .where(eq(bookings.id, booking.id))
+        .limit(1);
+
+      const currentBookingStatus = latestBooking?.status ?? booking.status;
+
+      if (currentPayment?.status === 'successful') {
+        return {
+          kind: 'recorded',
+          idempotent: true,
+          bookingStatus: currentBookingStatus,
+        };
+      }
+
+      const stillPaid = await hasSuccessfulFullPayment(
+        tx,
+        booking.id,
+        booking.priceFcfa,
+        verifiedTx.reference
+      );
+
+      if (stillPaid) {
+        await tx
+          .insert(payments)
+          .values({
+            bookingId: booking.id,
+            amountFcfa: verifiedTx.amountFcfa,
+            operator: verifiedTx.operator,
+            transactionRef: verifiedTx.reference,
+            status: 'failed',
+            rawStatus: 'AMOUNT_MISMATCH',
+            updatedAt: now,
           })
-          .from(payments)
-          .where(eq(payments.transactionRef, verifiedTx.reference))
-          .limit(1);
+          .onConflictDoUpdate({
+            target: payments.transactionRef,
+            set: {
+              amountFcfa: verifiedTx.amountFcfa,
+              operator: verifiedTx.operator,
+              status: 'failed',
+              rawStatus: 'AMOUNT_MISMATCH',
+              updatedAt: now,
+            },
+          });
 
-        if (currentPayment?.status === 'successful') {
-          const [latestBooking] = await tx
-            .select({ status: bookings.status })
-            .from(bookings)
-            .where(eq(bookings.id, booking.id))
-            .limit(1);
+        return { kind: 'already_paid' };
+      }
 
-          return {
-            idempotent: true,
-            bookingStatus: latestBooking?.status ?? booking.status,
-          };
-        }
-
-        if (currentPayment) {
-          await tx
-            .update(payments)
-            .set({
+      if (currentPayment) {
+        await tx
+          .update(payments)
+          .set({
+            amountFcfa: verifiedTx.amountFcfa,
+            operator: verifiedTx.operator,
+            status: mappedPaymentStatus,
+            rawStatus: verifiedTx.rawStatus,
+            updatedAt: now,
+          })
+          .where(eq(payments.id, currentPayment.id));
+      } else {
+        await tx
+          .insert(payments)
+          .values({
+            bookingId: booking.id,
+            amountFcfa: verifiedTx.amountFcfa,
+            operator: verifiedTx.operator,
+            transactionRef: verifiedTx.reference,
+            status: mappedPaymentStatus,
+            rawStatus: verifiedTx.rawStatus,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: payments.transactionRef,
+            set: {
               amountFcfa: verifiedTx.amountFcfa,
               operator: verifiedTx.operator,
               status: mappedPaymentStatus,
               rawStatus: verifiedTx.rawStatus,
               updatedAt: now,
-            })
-            .where(eq(payments.id, currentPayment.id));
-        } else {
-          await tx
-            .insert(payments)
-            .values({
-              bookingId: booking.id,
-              amountFcfa: verifiedTx.amountFcfa,
-              operator: verifiedTx.operator,
-              transactionRef: verifiedTx.reference,
-              status: mappedPaymentStatus,
-              rawStatus: verifiedTx.rawStatus,
-              updatedAt: now,
-            })
-            .onConflictDoUpdate({
-              target: payments.transactionRef,
-              set: {
-                amountFcfa: verifiedTx.amountFcfa,
-                operator: verifiedTx.operator,
-                status: mappedPaymentStatus,
-                rawStatus: verifiedTx.rawStatus,
-                updatedAt: now,
-              },
-            });
-        }
+            },
+          });
       }
 
       if (mappedPaymentStatus !== 'successful') {
         return {
+          kind: 'recorded',
           idempotent: false,
-          bookingStatus: booking.status,
+          bookingStatus: currentBookingStatus,
         };
       }
 
-      if (booking.status === 'confirmed' || booking.status === 'completed') {
+      if (currentBookingStatus === 'confirmed' || currentBookingStatus === 'completed') {
         return {
+          kind: 'recorded',
           idempotent: true,
-          bookingStatus: booking.status,
+          bookingStatus: currentBookingStatus,
         };
       }
 
-      if (booking.status === 'pending') {
+      if (currentBookingStatus === 'pending') {
         const updated = await tx
           .update(bookings)
           .set({
@@ -401,17 +536,27 @@ export async function processVerifiedFeexPayTransaction(
           .returning({ status: bookings.status });
 
         return {
+          kind: 'recorded',
           idempotent: false,
-          bookingStatus: updated[0]?.status ?? booking.status,
+          bookingStatus: updated[0]?.status ?? currentBookingStatus,
         };
       }
 
-      // Booking was already cancelled/expired: keep audit payment row without forcing slot back
+      // Booking was already cancelled/expired: keep audit payment row without forcing slot back.
       return {
+        kind: 'recorded',
         idempotent: false,
-        bookingStatus: booking.status,
+        bookingStatus: currentBookingStatus,
       };
     });
+
+    if (outcome.kind === 'already_paid') {
+      return {
+        ok: false,
+        code: 'AMOUNT_MISMATCH',
+        error: `Le montant total est déjà réglé (${formatFcfa(booking.priceFcfa)}). Aucun second paiement n'est attendu.`,
+      };
+    }
 
     return {
       ok: true,
@@ -425,6 +570,13 @@ export async function processVerifiedFeexPayTransaction(
     };
   } catch (error) {
     const details = extractDbErrorDetails(error);
+    if (details.code === '42P01') {
+      return {
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        error: PAYMENTS_TABLE_MISSING_ERROR,
+      };
+    }
     console.warn(
       'processVerifiedFeexPayTransaction failed:',
       details.code ?? 'UNKNOWN',
