@@ -20,19 +20,18 @@ import {
   X,
 } from 'lucide-react';
 import { fetchDaySlotsAction, reserveSlotAction } from '@/src/actions/bookings';
+import type { BookingStatus } from '@/src/db/schema';
 import type { CreatedBookingSummary, DaySlot } from '@/src/lib/bookings';
 import { buildBookingIcsDataUri } from '@/src/lib/calendar';
 import type { FeexPayWidgetConfig } from '@/src/lib/feexpay';
 import {
-  DEPOSIT_PERCENTAGE,
   HOURLY_RATE_FCFA,
   PENDING_HOLD_MINUTES,
   formatFcfa,
   formatShortFcfa,
-  getSlotPricing,
 } from '@/src/lib/pricing';
 import type { DayOption } from '@/src/lib/timezone';
-import { FeexPayDepositWidget } from './FeexPayDepositWidget';
+import { FeexPayPaymentWidget } from './FeexPayPaymentWidget';
 
 interface BookingExperienceProps {
   days: DayOption[];
@@ -122,13 +121,13 @@ function buildWhatsappHref(
 
   const message = [
     'Bonjour Élite Sport Godomey,',
-    'Je souhaite confirmer ma réservation par acompte :',
+    'Je souhaite confirmer ma réservation par paiement intégral :',
     `- Référence : ${booking.reference}`,
     `- Équipe : ${booking.teamName}`,
     `- Date : ${booking.dateLabel}`,
     `- Créneau : ${booking.timeLabel}`,
     `- Tarif total : ${formatFcfa(booking.priceFcfa)}`,
-    `- Acompte (30 %) : ${formatFcfa(booking.depositFcfa)}`,
+    `- Montant à payer : ${formatFcfa(booking.priceFcfa)}`,
   ].join('\n');
 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
@@ -168,6 +167,7 @@ export function BookingExperience({
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] =
     useState<CreatedBookingSummary | null>(null);
+  const [bookingStatus, setBookingStatus] = useState<BookingStatus>('pending');
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [onlinePayAvailable, setOnlinePayAvailable] = useState<boolean>(
     feexPayConfig.isConfigured
@@ -187,7 +187,6 @@ export function BookingExperience({
   const activeDay = days.find((d) => d.dateStr === selectedDate) ?? days[0];
   const freeCount = slots.filter((s) => s.state === 'free').length;
   const takenCount = slots.filter((s) => s.state === 'taken').length;
-  const basePricing = getSlotPricing(18);
 
   function handleSelectDate(dateStr: string) {
     if (dateStr === selectedDate && !loadError) return;
@@ -229,6 +228,7 @@ export function BookingExperience({
   function handleSelectSlot(slot: DaySlot) {
     if (slot.state !== 'free') return;
     setConfirmedBooking(null);
+    setBookingStatus('pending');
     setFormError(null);
     setSelectedSlot((prev) =>
       prev && prev.hour === slot.hour && prev.date === slot.date ? null : slot
@@ -253,6 +253,7 @@ export function BookingExperience({
       if (result.ok) {
         setNowMs(Date.now());
         setConfirmedBooking(result.booking);
+        setBookingStatus('pending');
         setSelectedSlot(null);
         setTeamName('');
         setPhone('');
@@ -299,7 +300,6 @@ export function BookingExperience({
             60 * 60 * 1000
         ).toISOString(),
         priceFcfa: confirmedBooking.priceFcfa,
-        depositFcfa: confirmedBooking.depositFcfa,
       })
     : null;
 
@@ -320,10 +320,9 @@ export function BookingExperience({
               {activeDay?.fullLabel} · {selectedSlot.label}
             </p>
             <p className="mt-1 text-xs sm:text-sm font-medium text-[#16231b]/80 tabular-nums">
-              Total : {formatFcfa(selectedSlot.priceFcfa)} · Acompte{' '}
-              {DEPOSIT_PERCENTAGE} % :{' '}
+              Tarif total : {formatFcfa(selectedSlot.priceFcfa)} · Montant à payer :{' '}
               <span className="font-bold text-[#1f5d3a]">
-                {formatFcfa(selectedSlot.depositFcfa)}
+                {formatFcfa(selectedSlot.priceFcfa)}
               </span>
             </p>
           </div>
@@ -447,34 +446,32 @@ export function BookingExperience({
             </span>
           </div>
           <div className="tabular-nums">
-            <span className="text-[#16231b]/65">Tarif : </span>
+            <span className="text-[#16231b]/65">Tarif total : </span>
             <span className="font-semibold text-[#16231b]">
               {formatFcfa(confirmedBooking.priceFcfa)}
             </span>
           </div>
           <div className="tabular-nums text-right sm:text-left">
-            <span className="text-[#16231b]/65">
-              Acompte {DEPOSIT_PERCENTAGE} % :{' '}
-            </span>
+            <span className="text-[#16231b]/65">Montant à payer : </span>
             <span className="font-bold text-[#1f5d3a]">
-              {formatFcfa(confirmedBooking.depositFcfa)}
+              {formatFcfa(confirmedBooking.priceFcfa)}
             </span>
           </div>
         </div>
 
         <div className="mt-3 flex flex-col gap-2.5">
-          <FeexPayDepositWidget
+          <FeexPayPaymentWidget
             booking={{
               id: confirmedBooking.id,
               reference: confirmedBooking.reference,
-              teamName: confirmedBooking.teamName,
               phone: confirmedBooking.phone,
-              depositFcfa: confirmedBooking.depositFcfa,
+              priceFcfa: confirmedBooking.priceFcfa,
             }}
+            bookingStatus={bookingStatus}
             feexPayConfig={feexPayConfig}
-            autoOpen={true}
             onAvailabilityChange={setOnlinePayAvailable}
             onVerifiedConfirmed={() => {
+              setBookingStatus('confirmed');
               router.push(`/reservation/${confirmedBooking.id}`);
             }}
           />
@@ -849,8 +846,8 @@ export function BookingExperience({
                   <span className="font-semibold text-[#16231b]">
                     {activeDay?.fullLabel}
                   </span>
-                  , indiquez le nom de votre équipe et réglez l&apos;acompte par
-                  Mobile Money ou WhatsApp.
+                  , indiquez le nom de votre équipe et réglez le montant intégral
+                  par Mobile Money ou WhatsApp.
                 </p>
 
                 <dl className="mt-5 pt-4 border-t border-[#16231b]/10 space-y-2.5 text-sm tabular-nums">
@@ -865,17 +862,9 @@ export function BookingExperience({
                     </dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-[#3c4a41]">
-                      Acompte ({DEPOSIT_PERCENTAGE} %)
-                    </dt>
+                    <dt className="text-[#3c4a41]">Montant à payer</dt>
                     <dd className="font-bold text-[#1f5d3a]">
-                      {formatFcfa(basePricing.depositFcfa)}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <dt className="text-[#3c4a41]">Solde au terrain</dt>
-                    <dd className="font-bold text-[#16231b]">
-                      {formatFcfa(basePricing.remainingFcfa)}
+                      {formatFcfa(HOURLY_RATE_FCFA)}
                     </dd>
                   </div>
                 </dl>

@@ -11,18 +11,19 @@ import {
   Smartphone,
 } from 'lucide-react';
 import type { FeexPayChannel, FeexPayWidgetConfig } from '@/src/lib/feexpay';
-import { formatFcfa } from '@/src/lib/pricing';
+import { formatFcfa, PENDING_HOLD_MINUTES } from '@/src/lib/pricing';
 
-interface FeexPayDepositWidgetProps {
+type WidgetBookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+
+interface FeexPayPaymentWidgetProps {
   booking: {
     id: string;
     reference: string;
-    teamName: string;
     phone: string;
-    depositFcfa: number;
+    priceFcfa: number;
   };
+  bookingStatus: WidgetBookingStatus;
   feexPayConfig: FeexPayWidgetConfig;
-  autoOpen?: boolean;
   onVerifiedConfirmed?: () => void;
   onPaymentFailed?: (message: string) => void;
   onAvailabilityChange?: (available: boolean) => void;
@@ -38,19 +39,21 @@ const CHANNELS: ReadonlyArray<{
   { id: 'card', label: 'Carte' },
 ];
 
-export function FeexPayDepositWidget({
+export function FeexPayPaymentWidget({
   booking,
+  bookingStatus,
   feexPayConfig,
   onVerifiedConfirmed,
   onPaymentFailed,
   onAvailabilityChange,
-}: FeexPayDepositWidgetProps) {
+}: FeexPayPaymentWidgetProps) {
   const [channel, setChannel] = useState<FeexPayChannel>('mtn');
   const [payPhone, setPayPhone] = useState<string>(booking.phone);
   const [isInitiating, setIsInitiating] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [paymentReceived, setPaymentReceived] = useState(false);
   const [statusNotice, setStatusNotice] = useState<{
     kind: 'error' | 'info' | 'success';
     text: string;
@@ -80,9 +83,10 @@ export function FeexPayDepositWidget({
 
       if (res.ok && data.ok && data.paymentStatus === 'successful') {
         setPendingRef(null);
+        setPaymentReceived(true);
         setStatusNotice({
           kind: 'success',
-          text: 'Acompte confirmé. Votre créneau est validé.',
+          text: 'Paiement intégral reçu. Confirmation en cours…',
         });
         onVerifiedConfirmed?.();
         return;
@@ -125,7 +129,7 @@ export function FeexPayDepositWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingRef, booking.id]);
 
-  if (!feexPayConfig.isConfigured) {
+  if (!feexPayConfig.isConfigured || bookingStatus !== 'pending') {
     return null;
   }
 
@@ -163,9 +167,10 @@ export function FeexPayDepositWidget({
       }
 
       if (data.status === 'successful') {
+        setPaymentReceived(true);
         setStatusNotice({
           kind: 'success',
-          text: 'Acompte confirmé. Votre créneau est validé.',
+          text: 'Paiement intégral reçu. Confirmation en cours…',
         });
         onVerifiedConfirmed?.();
         return;
@@ -199,10 +204,29 @@ export function FeexPayDepositWidget({
     }
   }
 
+  if (paymentReceived) {
+    return (
+      <div
+        role="status"
+        className="rounded-xl px-3 py-2.5 text-sm font-semibold flex items-start gap-2 bg-[#1f5d3a]/10 border border-[#1f5d3a]/30 text-[#1f5d3a]"
+      >
+        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+        <span>Paiement intégral reçu. Confirmation en cours…</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2.5 rounded-xl border border-[#16231b]/12 bg-[#f8f7f2] p-3">
-      <div className="flex items-center justify-between gap-2 text-xs font-semibold text-[#16231b]">
-        <span>Payer l&apos;acompte par Mobile Money ou Carte</span>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-[#16231b]">
+          Payer le montant complet par Mobile Money ou Carte
+        </span>
+        <span className="text-[11px] font-medium text-[#3c4a41]">
+          Créneau bloqué {PENDING_HOLD_MINUTES} minutes le temps d&apos;effectuer le
+          paiement intégral de {formatFcfa(booking.priceFcfa)}. Réf.{' '}
+          {booking.reference}
+        </span>
       </div>
 
       {/* Operator selector */}
@@ -276,7 +300,9 @@ export function FeexPayDepositWidget({
           ) : (
             <>
               <CreditCard className="w-5 h-5 shrink-0" aria-hidden="true" />
-              <span>Payer l&apos;acompte ({formatFcfa(booking.depositFcfa)})</span>
+              <span>
+                Payer le montant complet ({formatFcfa(booking.priceFcfa)})
+              </span>
             </>
           )}
         </button>
