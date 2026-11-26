@@ -23,7 +23,6 @@ export interface DaySlot {
   startsAtIso: string;
   endsAtIso: string;
   priceFcfa: number;
-  depositFcfa: number;
   isNightRate: boolean;
   state: SlotState;
 }
@@ -38,7 +37,6 @@ export interface CreatedBookingSummary {
   teamName: string;
   phone: string;
   priceFcfa: number;
-  depositFcfa: number;
   expiresAtIso: string;
 }
 
@@ -181,7 +179,6 @@ export async function getDaySlots(
       startsAtIso: startsAt.toISOString(),
       endsAtIso: endsAt.toISOString(),
       priceFcfa: pricing.priceFcfa,
-      depositFcfa: pricing.depositFcfa,
       isNightRate: pricing.isNightRate,
       state,
     });
@@ -237,7 +234,7 @@ export async function createBooking(
   try {
     await expirePendingBookings(db, now);
 
-    const { priceFcfa, depositFcfa } = getSlotPricing(hour);
+    const { priceFcfa } = getSlotPricing(hour);
     const expiresAt = new Date(now.getTime() + PENDING_HOLD_MINUTES * 60 * 1000);
 
     const [created] = await db
@@ -250,7 +247,8 @@ export async function createBooking(
         status: sql`'pending'` as unknown as 'pending',
         source: sql`'online'` as unknown as 'online',
         priceFcfa,
-        depositFcfa,
+        // Legacy compatibility column; stores the full price, never a deposit concept.
+        depositFcfa: priceFcfa,
         expiresAt,
       })
       .returning();
@@ -275,7 +273,6 @@ export async function createBooking(
         teamName: created.teamName,
         phone: created.phone,
         priceFcfa: created.priceFcfa,
-        depositFcfa: created.depositFcfa,
         expiresAtIso: (created.expiresAt ?? expiresAt).toISOString(),
       },
     };
@@ -310,8 +307,6 @@ export interface BookingDetails {
   phone: string;
   status: BookingStatus;
   priceFcfa: number;
-  depositFcfa: number;
-  remainingFcfa: number;
   expiresAtIso: string | null;
 }
 
@@ -339,7 +334,6 @@ export async function getBookingById(
       phone: bookings.phone,
       status: bookings.status,
       priceFcfa: bookings.priceFcfa,
-      depositFcfa: bookings.depositFcfa,
       expiresAt: bookings.expiresAt,
     })
     .from(bookings)
@@ -366,9 +360,6 @@ export async function getBookingById(
     phone: row.phone,
     status: row.status,
     priceFcfa: row.priceFcfa,
-    depositFcfa: row.depositFcfa,
-    remainingFcfa: Math.max(0, row.priceFcfa - row.depositFcfa),
     expiresAtIso: row.expiresAt ? new Date(row.expiresAt).toISOString() : null,
   };
 }
-

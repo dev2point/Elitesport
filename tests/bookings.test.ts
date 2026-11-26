@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { Database } from '@/src/db';
 import { createBooking, getDaySlots, isPostgresExclusionError } from '@/src/lib/bookings';
-import {
-  DEPOSIT_PERCENTAGE,
-  getSlotPricing,
-  HOURLY_RATE_FCFA,
-} from '@/src/lib/pricing';
+import * as pricing from '@/src/lib/pricing';
 import {
   buildPortoNovoSlotRange,
   getPortoNovoDateStr,
@@ -13,18 +9,41 @@ import {
 } from '@/src/lib/timezone';
 import { createBookingSchema } from '@/src/lib/validations';
 
-describe('Pricing rules', () => {
-  it('applies 25000 FCFA per hour 24h/24 with 30% integer deposit (7500 FCFA)', () => {
-    expect(HOURLY_RATE_FCFA).toBe(25000);
-    for (let h = 0; h < 24; h++) {
-      const p = getSlotPricing(h);
-      expect(p.priceFcfa).toBe(25000);
-      expect(p.depositFcfa).toBe(Math.round((25000 * DEPOSIT_PERCENTAGE) / 100));
-      expect(p.depositFcfa).toBe(7500);
-      expect(p.remainingFcfa).toBe(17500);
-      expect(Number.isInteger(p.priceFcfa)).toBe(true);
-      expect(Number.isInteger(p.depositFcfa)).toBe(true);
+describe('Full-payment-only pricing rules', () => {
+  it('exports only the flat-rate pricing surface (no deposit or payment stages)', () => {
+    expect(Object.keys(pricing).sort()).toEqual([
+      'DAY_RATE_FCFA',
+      'HOURLY_RATE_FCFA',
+      'NIGHT_RATE_FCFA',
+      'PENDING_HOLD_MINUTES',
+      'formatFcfa',
+      'formatShortFcfa',
+      'getSlotPricing',
+    ]);
+    expect('DEPOSIT_PERCENTAGE' in pricing).toBe(false);
+    expect('getPaymentProgress' in pricing).toBe(false);
+    expect('PaymentStage' in pricing).toBe(false);
+    expect('PaymentProgress' in pricing).toBe(false);
+  });
+
+  it('charges exactly 25 000 FCFA for every 1-hour slot, 24h/24', () => {
+    expect(pricing.HOURLY_RATE_FCFA).toBe(25000);
+    expect(pricing.DAY_RATE_FCFA).toBe(25000);
+    expect(pricing.NIGHT_RATE_FCFA).toBe(25000);
+    expect(pricing.PENDING_HOLD_MINUTES).toBe(15);
+
+    for (let hour = 0; hour < 24; hour++) {
+      const slot = pricing.getSlotPricing(hour);
+      expect(Object.keys(slot)).toEqual(['priceFcfa', 'isNightRate']);
+      expect(slot.priceFcfa).toBe(25000);
+      expect(Number.isInteger(slot.priceFcfa)).toBe(true);
+      expect(slot.isNightRate).toBe(hour >= 18 || hour <= 5);
     }
+  });
+
+  it('formats integer FCFA amounts without decimals', () => {
+    expect(pricing.formatFcfa(25000)).toBe('25 000 FCFA');
+    expect(pricing.formatShortFcfa(25000)).toBe('25 000 F');
   });
 });
 
@@ -180,9 +199,17 @@ describe('Concurrent booking exclusion (23P01)', () => {
       expect(failures[0].code).toBe('SLOT_TAKEN');
       expect(failures[0].error).toBe("Ce créneau vient d'être pris");
     }
+    if (successes[0].ok) {
+      expect(successes[0].booking.priceFcfa).toBe(25000);
+      expect(Object.keys(successes[0].booking)).not.toContain('depositFcfa');
+      expect(Object.keys(successes[0].booking)).not.toContain('paidFcfa');
+    }
+    expect(stored[0]?.depositFcfa).toBe(25000);
 
     const slots = await getDaySlots('2026-11-21', mockDb, fixedNow);
     expect(slots).toHaveLength(24);
     expect(slots[19]?.state).toBe('taken');
+    expect(slots[19]?.priceFcfa).toBe(25000);
+    expect(Object.keys(slots[19] ?? {})).not.toContain('depositFcfa');
   });
 });
