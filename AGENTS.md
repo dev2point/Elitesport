@@ -9,7 +9,7 @@ Application de réservation pour **un seul terrain de football** : Élite Sport 
 - **Drizzle ORM** + **PostgreSQL hébergé sur Supabase**, utilisé uniquement comme base de données (pas de SDK Supabase, pas d'auth Supabase, pas de Realtime).
 - **Zod** pour valider toute entrée serveur.
 - **Better Auth** (prévu, Phase 1b) : e-mail + mot de passe pour le gérant, rôle `admin`. Les équipes n'ont pas de compte.
-- **Paiement** (prévu, Phase 2) : KkiaPay ou FedaPay, acompte Mobile Money (MTN, Moov), confirmation par webhook.
+- **Paiement** (prévu, Phase 2) : KkiaPay ou FedaPay, paiement plein Mobile Money (MTN, Moov), confirmation après paiement complet par webhook.
 - Déploiement : Vercel.
 
 ## Commandes
@@ -39,8 +39,8 @@ sql/              migrations SQL à exécuter à la main dans Supabase
 2. **Fuseau horaire.** Le Bénin est en UTC+1 toute l'année, sans heure d'été. Stocker en `timestamptz`, construire les créneaux avec l'offset `+01:00`, afficher en `Africa/Porto-Novo`. Ne jamais utiliser le fuseau du serveur (Vercel est en UTC).
 3. **Créneaux de 1 heure, 24 par jour** (00h à 23h). Un créneau de 23h–0h finit le lendemain : toujours raisonner avec des dates complètes, jamais avec des heures seules.
 4. **Expiration sans cron.** Les réservations `pending` dont `expires_at` est dépassé sont annulées au début de chaque lecture ou création (`expireStale()`). Garder ce mécanisme.
-5. **Statuts** : `pending` (bloqué 15 min, en attente d'acompte), `confirmed`, `cancelled`, `completed`. Source : `online` ou `manual` (saisie par le gérant).
-6. **Tarifs** centralisés dans `src/lib/pricing.ts` (valeurs par défaut : 5 000 FCFA de 6h à 17h, 7 500 FCFA de 18h à 5h, acompte 30 %). Ne pas dupliquer de montants ailleurs. Montants en entiers FCFA, sans décimales.
+5. **Statuts** : `pending` (bloqué 15 min, en attente de paiement), `confirmed`, `cancelled`, `completed`. Source : `online` ou `manual` (saisie par le gérant).
+6. **Tarifs** centralisés dans `src/lib/pricing.ts` (paiement plein : 25 000 FCFA par heure, 24h/24, pas d'acompte). Ne pas dupliquer de montants ailleurs. Montants en entiers FCFA, sans décimales.
 7. **Téléphones** : accepter les formats béninois (8 chiffres ancien format, 10 chiffres avec le préfixe `01`, avec ou sans `+229`).
 
 ## Sécurité
@@ -68,7 +68,7 @@ Identité inspirée du terrain réel (herbe synthétique, lignes orange). Tokens
 
 - [x] Phase 1 : page publique (jours, créneaux, réservation avec blocage 15 min, confirmation WhatsApp)
 - [ ] Phase 1b : Better Auth + espace gérant (planning, réservation manuelle, annulation, blocage de créneaux, tarifs)
-- [ ] Phase 2 : acompte Mobile Money (KkiaPay ou FedaPay), webhook, confirmation automatique
+- [ ] Phase 2 : paiement plein Mobile Money (KkiaPay ou FedaPay), webhook, confirmation après paiement complet
 - [ ] Phase 3 : rappels WhatsApp/SMS, tableau de bord des revenus, historique, PWA installable, réservation multi-heures
 
 ## Avant de terminer une tâche

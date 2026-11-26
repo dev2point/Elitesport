@@ -2,7 +2,7 @@
 
 > **Statut.** Extraction du système existant et contrat de design pour la page publique `/`, la page de réservation `/reserver` et les pages légales. Ce document ne modifie aucun fichier source, de configuration ou de paquet.
 >
-> **Périmètre.** Un seul terrain de football à Godomey, Cotonou, Bénin, ouvert 24h/24. Créneaux d'une heure, réservation depuis un smartphone Android d'entrée de gamme, confirmation par WhatsApp, acompte de 30 %.
+> **Périmètre.** Un seul terrain de football à Godomey, Cotonou, Bénin, ouvert 24h/24. Créneaux d'une heure, réservation depuis un smartphone Android d'entrée de gamme, paiement intégral de 25 000 FCFA avant confirmation, WhatsApp en solution de repli.
 >
 > **Direction.** « Terrain & lignes » : un fond de craie, des lignes de terrain orange tracées avec retenue, le vert du terrain pour l'action principale, des titres Barlow Condensed. Pas de photos inventées, pas de preuves inventées.
 >
@@ -131,17 +131,17 @@ Correspondance, dans l'ordre : `/`, `/reserver`, `/legals`, `/legals/mentions-le
 **Priorités d'information.**
 
 1. L'offre : un terrain de football à Godomey, Cotonou, Bénin, ouvert 24h/24, créneaux d'une heure.
-2. Le déroulé : choisir un créneau, le bloquer 15 minutes, confirmer sur WhatsApp avec l'acompte de 30 %.
-3. Le prix et la réassurance : 5 000 FCFA de 06h à 17h, 7 500 FCFA de 18h à 05h, acompte de 30 %, liens légaux.
+2. Le déroulé : choisir un créneau, le bloquer 15 minutes, payer le montant intégral avant confirmation.
+3. Le prix et la réassurance : 25 000 FCFA par heure, jour et nuit, paiement intégral avant confirmation, liens légaux.
 
 **Contenu requis.**
 
 - H1 : `Le terrain de Godomey, ouvert 24h/24.`
 - Sous-titre : `Élite Sport Godomey — Godomey, Cotonou, Bénin. Un créneau d'une heure, réservé depuis votre téléphone.`
 - CTA : `Voir les créneaux`.
-- Trois étapes numérotées : `Choisissez un jour et un créneau d'une heure.` / `Bloquez-le 15 minutes et indiquez le nom de votre équipe.` / `Confirmez sur WhatsApp avec l'acompte de 30 %.`
-- Tarifs : `06h–17h : 5 000 FCFA` et `18h–05h : 7 500 FCFA`, avec `Acompte : 30 %`.
-- Réassurance : `Réservation en ligne, confirmation par WhatsApp.` + liens légaux.
+- Trois étapes numérotées : `Choisissez un jour et un créneau d'une heure.` / `Bloquez-le 15 minutes et indiquez le nom de votre équipe.` / `Payez le montant intégral avant confirmation.`
+- Tarifs : `25 000 FCFA par heure, jour et nuit`, avec `Paiement intégral avant confirmation`.
+- Réassurance : `Réservation en ligne, paiement intégral avant confirmation.` + liens légaux.
 - Footer : marque, `Godomey, Cotonou, Bénin`, liens `/legals`, `/legals/mentions-legales`, `/legals/confidentialite`, `/legals/cgu`.
 
 **Volontairement exclus.** Témoignages, notes, nombre de réservations, logos, photos de terrain, vidéos, cartes de fonctionnalités, comparaison d'offres, urgence artificielle, pop-up d'inscription.
@@ -160,16 +160,26 @@ Correspondance, dans l'ordre : `/`, `/reserver`, `/legals`, `/legals/mentions-le
 
 ### 5.2 Booking screen brief (`/reserver`)
 
-**Objectif.** Choisir un jour, choisir un créneau, le bloquer 15 minutes, laisser le nom de l'équipe et le téléphone, puis confirmer sur WhatsApp. La page actuelle à `/` devient `/reserver` sans changer les règles métier.
+**Objectif.** Choisir un jour, choisir un créneau, le bloquer 15 minutes, laisser le nom de l'équipe et le téléphone, puis payer le montant intégral avant confirmation. WhatsApp reste une solution de repli. La page actuelle à `/` devient `/reserver` sans changer les règles métier.
 
 **Contraintes métier visibles.**
 
 - Créneaux d'une heure, 24 par jour, de 00h à 23h. Un créneau 23h–0h finit le lendemain.
 - Blocage `pending` de 15 minutes, puis expiration. `expireStale()` reste appelé au début de chaque lecture ou création.
-- Prix : 5 000 FCFA de 06h à 17h, 7 500 FCFA de 18h à 05h. Acompte 30 %. Montants entiers FCFA, sans décimales.
+- Prix : 25 000 FCFA par heure, jour et nuit. Paiement intégral de 25 000 FCFA avant confirmation. Montants entiers FCFA, sans décimales.
 - Téléphones béninois acceptés : 8 chiffres ancien format, 10 chiffres avec préfixe `01`, avec ou sans `+229`.
 - Anti-double réservation : la contrainte `bookings_no_overlap` reste la source de vérité. Une violation PostgreSQL `23P01` affiche un message clair, jamais un écran blanc.
-- Confirmation WhatsApp : le message contient le créneau, le prix et l'acompte. Le lien WhatsApp est une action secondaire, jamais un substitut au statut de réservation.
+- Confirmation WhatsApp : le message contient le créneau, le tarif total et le montant à payer (25 000 FCFA). Le lien WhatsApp est une action secondaire, jamais un substitut au statut de réservation.
+
+**États de paiement affichés.**
+
+| État | Déclencheur | Ce que voit l'utilisateur | Statut réservation |
+|---|---|---|---|
+| `awaiting_payment` | Créneau bloqué, paiement intégral non reçu | `Montant à payer : 25 000 FCFA` ; bouton `Payer le montant complet (25 000 FCFA)` ; rappel `Créneau bloqué 15 minutes le temps d'effectuer le paiement intégral.` | `pending` |
+| `payment_received` | Paiement intégral reçu, serveur pas encore à jour | `Paiement intégral reçu. Confirmation en cours…` ; plus aucun bouton de paiement | `pending` puis `confirmed` après vérification serveur |
+| `confirmed` | Statut serveur `confirmed` | `Réservation confirmée` ; plus aucun bouton de paiement | `confirmed` |
+
+Le widget ne traite pas un paiement réussi comme une confirmation. Le statut serveur fait foi : `bookingStatus === 'confirmed'` est requis pour afficher `confirmée` et appeler `onVerifiedConfirmed`.
 
 **Hiérarchie.** Header → titre de page + lieu → roue des jours → bandeau tarifs + nombre de créneaux libres → grille de créneaux → feuille de réservation (à l'ouverture) → footer légal.
 
@@ -184,7 +194,7 @@ Correspondance, dans l'ordre : `/`, `/reserver`, `/legals`, `/legals/mentions-le
 - `/legals` : index des informations légales, trois liens.
 - `/legals/mentions-legales` : éditeur, responsable de publication, statut juridique, adresse complète, contact, hébergeur.
 - `/legals/confidentialite` : responsable de traitement, données collectées, finalités, base légale, durée de conservation, destinataires, droits, contact.
-- `/legals/cgu` : conditions de réservation, prix, acompte, blocage 15 minutes, annulation et remboursement, responsabilité, droit applicable.
+- `/legals/cgu` : conditions de réservation, prix, paiement intégral avant confirmation, blocage 15 minutes, annulation et remboursement, responsabilité, droit applicable.
 
 **Composants.** `LegalToc`, `LegalSection`, `PlaceholderField`, `LegalFooter`. Une seule colonne, `content-limiter`, titres H1 → H2, sommaire ancré. Pas de CTA primaire ; un lien discret `Retour aux créneaux` suffit.
 
@@ -232,7 +242,7 @@ Ces composants existent déjà sous forme de markup dupliqué. Ils sont nommés 
 
 #### `PriceStrip`
 
-- **Structure.** Bandeau de faits tarifaires, pas une carte : prix jour, prix soir, acompte, nombre de créneaux libres.
+- **Structure.** Bandeau de faits tarifaires, pas une carte : prix horaire, paiement intégral avant confirmation, blocage 15 minutes, nombre de créneaux libres.
 - **Variantes.** Réservation, landing (version courte).
 - **États.** Défaut ; chargement (`Mise à jour…`) ; hors ligne ; aucun créneau (`Aucun créneau libre pour ce jour`).
 - **Accessibilité.** Texte à 14 px minimum ; `dl` ou liste ; chiffres tabulaires ; le nombre de créneaux libres est annoncé une fois, pas à chaque frappe.
@@ -452,7 +462,7 @@ Aucun artifact d'interviews ou de tests utilisateurs n'était disponible. Les pe
 2. Appuyer sur `Voir les créneaux` et arriver sur `/reserver`.
 3. Choisir un jour, puis un créneau d'une heure.
 4. Ouvrir la feuille, saisir le nom de l'équipe et un téléphone béninois.
-5. Bloquer le créneau 15 minutes, puis confirmer sur WhatsApp avec l'acompte de 30 %.
+5. Bloquer le créneau 15 minutes, payer le montant intégral avant confirmation ; WhatsApp reste disponible en repli.
 6. Revenir sur `/reservation/[id]` pour retrouver la confirmation et les actions WhatsApp/calendrier.
 
 ### 9.3 Ideal state
@@ -492,4 +502,4 @@ Aucun artifact d'interviews ou de tests utilisateurs n'était disponible. Les pe
 
 ---
 
-**Validation de livraison.** Le document est complet en sections 1–9. Les règles métier (créneaux d'une heure, 24h/24, fuseau `+01:00`, blocage 15 minutes, prix, acompte 30 %, téléphones béninois, contrainte `bookings_no_overlap`) sont reprises sans être contournées. Aucun fichier source, de configuration ou de paquet n'a été modifié pour produire ce document.
+**Validation de livraison.** Le document est complet en sections 1–9. Les règles métier (créneaux d'une heure, 24h/24, fuseau `+01:00`, blocage 15 minutes, prix, paiement intégral de 25 000 FCFA avant confirmation, téléphones béninois, contrainte `bookings_no_overlap`) sont reprises sans être contournées. Aucun fichier source, de configuration ou de paquet n'a été modifié pour produire ce document.
