@@ -52,8 +52,8 @@ export default function LegalsPage() {
       <LegalSection id="cgu" title="Conditions générales de vente">
         <p>
           Les créneaux durent une heure, le terrain est ouvert 24h/24 à Godomey,
-          Cotonou, Bénin, et l’acompte est de 30 %. Les règles d’annulation et de
-          remboursement sont à compléter.
+          Cotonou, Bénin, et le paiement intégral est requis avant confirmation.
+          Les règles d’annulation et de remboursement sont à compléter.
         </p>
         <Link
           href="/legals/cgu"

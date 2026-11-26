@@ -3,11 +3,7 @@ import { LegalPageShell } from '@/src/components/LegalPageShell';
 import { LegalSection } from '@/src/components/LegalSection';
 import { PlaceholderField } from '@/src/components/PlaceholderField';
 import type { LegalTocItem } from '@/src/components/LegalToc';
-import {
-  DEPOSIT_PERCENTAGE,
-  formatFcfa,
-  HOURLY_RATE_FCFA,
-} from '@/src/lib/pricing';
+import { formatFcfa, HOURLY_RATE_FCFA } from '@/src/lib/pricing';
 
 export const metadata: Metadata = {
   title: 'Conditions générales de vente — Élite Sport Godomey',
@@ -16,7 +12,7 @@ export const metadata: Metadata = {
 const toc: LegalTocItem[] = [
   { id: 'objet', label: 'Objet' },
   { id: 'reservation', label: 'Réservation' },
-  { id: 'tarifs', label: 'Tarifs et acompte' },
+  { id: 'tarifs', label: 'Tarifs et paiement intégral' },
   { id: 'annulation', label: 'Annulation et remboursement' },
   { id: 'modification', label: 'Modification' },
 ];
@@ -40,17 +36,17 @@ export default function CguPage() {
         <p>
           Le terrain est ouvert 24h/24. Les créneaux durent une heure et sont
           proposés sur les sept jours à venir. Le choix d’un créneau bloque la
-          réservation pendant 15 minutes avant sa confirmation sur WhatsApp.
+          réservation pendant 15 minutes avant sa confirmation par paiement intégral.
         </p>
       </LegalSection>
 
-      <LegalSection id="tarifs" title="Tarifs et acompte">
+      <LegalSection id="tarifs" title="Tarifs et paiement intégral">
         <p>
           Le tarif unique est de {formatFcfa(HOURLY_RATE_FCFA)} par heure, 24h/24.
-          L’acompte est de {DEPOSIT_PERCENTAGE} %.
+          Le créneau est confirmé uniquement après réception du paiement intégral.
         </p>
         <p>
-          <PlaceholderField field="modalités de paiement de l’acompte" />
+          <PlaceholderField field="modalités de paiement intégral" />
         </p>
       </LegalSection>
 
