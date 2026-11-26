@@ -29,13 +29,11 @@ export interface AdminBookingItem {
   status: BookingStatus;
   source: BookingSource;
   priceFcfa: number;
-  depositFcfa: number;
   expiresAtIso: string | null;
 }
 
 export interface RevenuePeriodSummary {
   totalFcfa: number;
-  depositFcfa: number;
   count: number;
 }
 
@@ -79,7 +77,6 @@ export async function getAdminRevenueStats(
     .select({
       startsAt: bookings.startsAt,
       priceFcfa: bookings.priceFcfa,
-      depositFcfa: bookings.depositFcfa,
     })
     .from(bookings)
     .where(
@@ -91,26 +88,23 @@ export async function getAdminRevenueStats(
     );
 
   const summary: AdminRevenueSummary = {
-    day: { totalFcfa: 0, depositFcfa: 0, count: 0 },
-    week: { totalFcfa: 0, depositFcfa: 0, count: 0 },
-    month: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+    day: { totalFcfa: 0, count: 0 },
+    week: { totalFcfa: 0, count: 0 },
+    month: { totalFcfa: 0, count: 0 },
   };
 
   for (const row of rows) {
     const ts = new Date(row.startsAt).getTime();
     if (ts >= dayStart.getTime() && ts < dayEnd.getTime()) {
       summary.day.totalFcfa += row.priceFcfa;
-      summary.day.depositFcfa += row.depositFcfa;
       summary.day.count += 1;
     }
     if (ts >= weekRange.start.getTime() && ts < weekRange.end.getTime()) {
       summary.week.totalFcfa += row.priceFcfa;
-      summary.week.depositFcfa += row.depositFcfa;
       summary.week.count += 1;
     }
     if (ts >= monthRange.start.getTime() && ts < monthRange.end.getTime()) {
       summary.month.totalFcfa += row.priceFcfa;
-      summary.month.depositFcfa += row.depositFcfa;
       summary.month.count += 1;
     }
   }
@@ -145,7 +139,6 @@ export async function getAdminDayBookings(
       status: bookings.status,
       source: bookings.source,
       priceFcfa: bookings.priceFcfa,
-      depositFcfa: bookings.depositFcfa,
       expiresAt: bookings.expiresAt,
     })
     .from(bookings)
@@ -172,7 +165,6 @@ export async function getAdminDayBookings(
       status: row.status,
       source: row.source,
       priceFcfa: row.priceFcfa,
-      depositFcfa: row.depositFcfa,
       expiresAtIso: row.expiresAt ? new Date(row.expiresAt).toISOString() : null,
     };
   });

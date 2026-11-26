@@ -35,8 +35,7 @@ describe('Admin booking status transitions & day listing', () => {
       phone: '+2290197000000',
       status: 'pending' as 'pending' | 'confirmed' | 'cancelled' | 'completed',
       source: 'online' as const,
-      priceFcfa: 7500,
-      depositFcfa: 2250,
+      priceFcfa: 25000,
       expiresAt: new Date('2026-11-18T12:00:00.000Z') as Date | null,
     };
 
@@ -85,6 +84,8 @@ describe('Admin booking status transitions & day listing', () => {
     expect(list).toHaveLength(1);
     expect(list[0]?.timeLabel).toBe('18h–19h');
     expect(list[0]?.whatsappDigits).toBe('2290197000000');
+    expect(list[0]?.priceFcfa).toBe(25000);
+    expect(list[0]).not.toHaveProperty('depositFcfa');
 
     const confirmRes = await transitionBookingStatus(validId, 'confirm', mockDb);
     expect(confirmRes).toEqual({ ok: true, status: 'confirmed' });

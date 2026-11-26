@@ -27,9 +27,9 @@ interface AdminHomePageProps {
 }
 
 const EMPTY_REVENUE: AdminRevenueSummary = {
-  day: { totalFcfa: 0, depositFcfa: 0, count: 0 },
-  week: { totalFcfa: 0, depositFcfa: 0, count: 0 },
-  month: { totalFcfa: 0, depositFcfa: 0, count: 0 },
+  day: { totalFcfa: 0, count: 0 },
+  week: { totalFcfa: 0, count: 0 },
+  month: { totalFcfa: 0, count: 0 },
 };
 
 export default async function AdminHomePage({ searchParams }: AdminHomePageProps) {

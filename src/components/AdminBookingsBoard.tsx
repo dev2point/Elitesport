@@ -42,7 +42,7 @@ const STATUS_META: Record<
   { label: string; badgeClass: string }
 > = {
   pending: {
-    label: "En attente d'acompte",
+    label: 'En attente de paiement',
     badgeClass: 'bg-[#e8590c]/15 text-[#9e3602] border border-[#e8590c]/35',
   },
   confirmed: {
@@ -302,15 +302,9 @@ export function AdminBookingsBoard({
                 {/* Amounts */}
                 <div className="mt-2.5 py-2.5 border-y border-[#16231b]/10 flex flex-wrap items-center justify-between gap-2 text-sm tabular-nums">
                   <span>
-                    Montant :{' '}
-                    <strong className="text-[#16231b]">
-                      {formatFcfa(booking.priceFcfa)}
-                    </strong>
-                  </span>
-                  <span>
-                    Acompte 30 % :{' '}
+                    Montant à payer :{' '}
                     <strong className="text-[#1f5d3a]">
-                      {formatFcfa(booking.depositFcfa)}
+                      {formatFcfa(booking.priceFcfa)}
                     </strong>
                   </span>
                 </div>
@@ -357,7 +351,7 @@ export function AdminBookingsBoard({
                         <span>
                           {isBusy
                             ? 'Enregistrement...'
-                            : 'Confirmer (acompte reçu)'}
+                            : 'Confirmer (paiement reçu)'}
                         </span>
                       </button>
                     )}
